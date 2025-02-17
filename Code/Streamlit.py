@@ -1,3 +1,7 @@
+
+# pip install -e .
+# streamlit run Streamlit.py
+
 import os
 import dotenv
 import pandas as pd
