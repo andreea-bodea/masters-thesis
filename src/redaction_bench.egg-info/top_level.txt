@@ -1,0 +1,11 @@
+Cache
+FragDenStaat_BMZ_attachments
+PDF_reader
+Pinecone_RAG
+Pinecone_loader
+Presidio_OpenAI
+Presidio_anoymization
+Presidio_helpers
+Storage
+Streamlit
+Streamlit_Presidio
