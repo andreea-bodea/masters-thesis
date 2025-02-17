@@ -1,0 +1,17 @@
+[project]
+name = "redaction-bench"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "joblib>=1.4.2",
+    "langchain>=0.3.8",
+    "langchain-anthropic>=0.3.0",
+    "langchain-openai>=0.2.9",
+    "pymupdf>=1.24.14",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "tqdm>=4.67.1",
+    "pillow>=11.0.0",
+]

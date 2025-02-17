@@ -11,7 +11,7 @@ from requests import get
 from tqdm.auto import tqdm
 
 from cache import cache
-from pdf_to_text import convert_pdf_to_text
+from backend.pdf_to_text import convert_pdf_to_text
 
 get = cache(get)
 

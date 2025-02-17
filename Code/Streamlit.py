@@ -6,7 +6,7 @@ import hashlib
 import streamlit as st
 
 from annotated_text import annotated_text
-from cache import Cache
+from Cache import Cache
 from Storage import check_pdf_exists, insert_pdf_record, list_pdf_records
 from PDF_reader import convert_pdf_to_text
 from Presidio_helpers import (
