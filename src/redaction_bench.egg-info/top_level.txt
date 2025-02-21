@@ -1,6 +1,6 @@
-Cache
 FragDenStaat_BMZ_attachments
 PDF_reader
+Pinecone_LlamaIndex
 Pinecone_RAG
 Pinecone_loader
 Presidio_OpenAI
@@ -9,3 +9,6 @@ Presidio_helpers
 Storage
 Streamlit
 Streamlit_Presidio
+cache
+create_table
+test

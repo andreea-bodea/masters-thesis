@@ -143,7 +143,7 @@ def create_fake_data(
         return "Please provide your OpenAI key"
     results = anonymize(text=text, operator="replace", analyze_results=analyze_results)
     prompt = create_prompt(results.text)
-    print(f"Prompt: {prompt}")
+    # print(f"Prompt: {prompt}")
     fake = call_completion_model(prompt=prompt, openai_params=openai_params)
     return fake
 

@@ -43,5 +43,5 @@ I live in New York City, and my credit card number is 4111-1111-1111-1111.
 """
 
 original_text, anonymized_text = anonymize_text(text_to_anonymize)
-print("Original Text:", original_text)
-print("Anonymized Text:", anonymized_text)
+# print("Original Text:", original_text)
+# print("Anonymized Text:", anonymized_text)
