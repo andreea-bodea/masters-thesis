@@ -61,8 +61,6 @@ def loadDataPinecone(index_name: str, text: str, file_name: str, file_hash: str,
         text=text,
         metadata={"file_name": file_name, "file_hash": file_hash, "text_type": text_type}
     )
-    logging.info(f"Metadata: {document.metadata}")
-    logging.info(f"Metadata size: {len(json.dumps(document.metadata))}")
 
     # Set up Pinecone as the vector store
     vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
@@ -92,10 +90,16 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
     )
 
     # Create a VectorStoreIndex and query engine
+    similarity_top_k = 2
     index = VectorStoreIndex.from_vector_store(vector_store)
-    query_engine = index.as_query_engine(llm=llm, filters=metadata_filters)
-
+    query_engine = index.as_query_engine(llm=llm, similarity_top_k=similarity_top_k, filters=metadata_filters)
+    
     # Query the index and return response
     response = query_engine.query(question)
 
-    return response
+    nodes_text = []
+    for i in range( 0, min(similarity_top_k, len(response.source_nodes)) ):
+        node_text = response.source_nodes[i].get_text()
+        nodes_text.append(node_text)
+
+    return (response, nodes_text)

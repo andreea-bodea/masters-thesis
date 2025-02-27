@@ -95,7 +95,6 @@ if uploaded_file is not None:
 
         # Log or display the JSON string
         st_logger.info(f"Text analysis results in JSON: {results_json}")
-        st.write(results_json)
         
         text_pii_deleted = anonymize(
             text=text_with_pii,
@@ -249,8 +248,8 @@ if st.button("Get Answer"):
         elif st_operator == "REPLACE with synthetic data":
             text_type_filter = "text_pii_synthetic"
 
-        response_with_pii = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
-        response_without_pii = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
+        (response_with_pii, nodes_response_with_pii) = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
+        (response_without_pii, nodes_response_without_pii) = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
         
         st_logger.info("Answers retrieved from query engine.")
 
@@ -271,5 +270,68 @@ if st.button("Get Answer"):
             key="text_input_without_pii",
             label_visibility="visible" # visible, hidden, collapsed
         )
+
+        st_logger.info("Nodes retrieved from query engine.")
+
+        col1, col2 = st.columns(2)
+
+        # Display using st.expander for collapsible sections
+        with col1:
+            with st.expander("Nodes retrieved from the text containing private information", expanded=False):
+                st.write(nodes_response_with_pii)  # Automatically formats the list
+
+        with col2:
+            with st.expander("Nodes retrieved from the text with applied privacy-preserving method", expanded=False):
+                st.write(nodes_response_without_pii)  # Automatically formats the list
+
+        analyzer = analyzer_engine()
+        st_analyze_results = analyze(
+            text=str(response_with_pii),
+            language="en",
+            score_threshold=0.5,
+            allow_list=[],
+        )
+        with st.expander("Private Information in Response 1", expanded=False):
+            if st_analyze_results:
+                df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results])
+                # Create the text slice once, then reuse it.
+                df["Text"] = [str(response_with_pii)[res.start:res.end] for res in st_analyze_results]
+                df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
+                    {
+                        "entity_type": "Entity type",
+                        "start": "Start",
+                        "end": "End",
+                        "score": "Confidence",
+                    },
+                    axis=1,
+                )
+                st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
+            else:
+                st.text("No findings")
+
+        st_analyze_results_2 = analyze(
+            text=str(response_without_pii),
+            language="en",
+            score_threshold=0.5,
+            allow_list=[],
+        )
+        with st.expander("Private Information in Response 1", expanded=False):
+            if st_analyze_results_2:
+                df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results_2])
+                # Create the text slice once, then reuse it.
+                df["Text"] = [str(response_without_pii)[res.start:res.end] for res in st_analyze_results_2]
+                df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
+                    {
+                        "entity_type": "Entity type",
+                        "start": "Start",
+                        "end": "End",
+                        "score": "Confidence",
+                    },
+                    axis=1,
+                )
+                st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
+            else:
+                st.text("No findings")
     else:
         st.warning("Please select at least one PDF or upload a new one and enter a question.")
+
