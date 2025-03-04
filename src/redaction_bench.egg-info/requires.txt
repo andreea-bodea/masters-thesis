@@ -20,3 +20,4 @@ torch
 openai
 chroma
 psycopg2
+deepeval

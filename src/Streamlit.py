@@ -12,7 +12,7 @@ import json
 from presidio_analyzer import RecognizerResult
 
 from annotated_text import annotated_text
-from Storage import check_pdf_exists, insert_pdf_record, list_pdf_records
+from Storage import check_document_exists, insert_record, list_records
 from PDF_reader import convert_pdf_to_text
 from Presidio_helpers import (
     analyze,
@@ -46,17 +46,17 @@ index_name = "masters-thesis-index"
 
 # SIDE BAR
 
-pdf_records = list_pdf_records()
-st_logger.info("PDF records loaded.")
-pdf_options = [f"{record['id']} - {record['file_name']} - {record['file_hash']}" for record in pdf_records]
-selected_file = st.sidebar.selectbox("Choose the data:", options=pdf_options)
+db_records = list_records()
+st_logger.info("DB records loaded.")
+db_options = [f"{record['id']} - {record['file_name']} - {record['file_hash']}" for record in db_records]
+selected_file = st.sidebar.selectbox("Choose the data:", options=db_options)
 st_logger.info(f"Selected file: {selected_file}")
 if selected_file:
     selected_hash = selected_file.split(" - ")[2]  
-    database_file = check_pdf_exists(selected_hash)  
+    database_file = check_document_exists(selected_hash)  
     st_logger.info("Selected file from database")
 
-uploaded_file = st.sidebar.file_uploader("Upload a file:", type="pdf")
+uploaded_file = st.sidebar.file_uploader("Upload a file:", type=["pdf", "txt"])
 
 st_operator = st.sidebar.selectbox("Choose the privacy-preserving method:", options=["DELETE", "REPLACE with label", "REPLACE with synthetic data", "Differential privacy"])
 
@@ -64,19 +64,27 @@ st.sidebar.selectbox("Choose the RAG model:", options=["Simple RAG", "Chatbot RA
 st.sidebar.selectbox("Choose the LLM:", options=["gpt-4o-mini"])
 
 if uploaded_file is not None:
-    pdf_bytes = uploaded_file.read()
-    file_hash = hashlib.sha256(pdf_bytes).hexdigest()
-    existing_file = check_pdf_exists(file_hash)
+    file_extension = uploaded_file.name.split('.')[-1]  # Get the file extension
+    file_bytes = uploaded_file.read()
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
     st_logger.info(f"File hash: {file_hash}")
+
+    existing_file = check_document_exists(file_hash)
 
     if existing_file is not None:
         database_file = existing_file
         st_logger.info("Existing file found in the database.")
+    else:
+        st_logger.info("No existing file found, processing the uploaded file.")
 
-    if existing_file is None:
-        st_logger.info("No existing file found, processing the uploaded PDF.")
-        text_with_pii = asyncio.run(convert_pdf_to_text(pdf_bytes))
-        st_logger.info("Converted PDF to text.")
+        if file_extension == "pdf":
+            # Convert PDF to text
+            text_with_pii = asyncio.run(convert_pdf_to_text(file_bytes))
+            st_logger.info("Converted PDF to text.")
+        elif file_extension == "txt":
+            # Directly use the content of the TXT file
+            text_with_pii = file_bytes.decode("utf-8")  # Decode bytes to string
+            st_logger.info("Using uploaded TXT file content.")
 
         analyzer = analyzer_engine()
         st_analyze_results = analyze(
@@ -120,11 +128,31 @@ if uploaded_file is not None:
             api_version=None,
             api_type="openai",
         )
-        text_pii_synthetic = create_fake_data(
-            text_with_pii,
-            st_analyze_results,
-            open_ai_params,
-        )   
+
+        def split_text_into_chunks(text, max_words):
+            """Split text into chunks of a specified maximum word count."""
+            words = text.split()
+            for i in range(0, len(words), max_words):
+                yield ' '.join(words[i:i + max_words])
+
+        text_chunks = list(split_text_into_chunks(text_with_pii, max_words=2500))
+
+        # List to hold synthetic data results
+        text_pii_synthetic = ''
+
+        for chunk in text_chunks:
+            st_analyze_chunk_results = analyze(
+                text=chunk,
+                language="en",
+                score_threshold=0.5,
+                allow_list=[],
+            )
+            text_chunk_pii_synthetic = create_fake_data(
+                chunk,
+                st_analyze_chunk_results,
+                open_ai_params,
+            )
+            text_pii_synthetic.join(text_chunk_pii_synthetic)
         st_logger.info("Synthetic data created.")
         st_logger.info(f"Synthetic: {text_pii_synthetic} ")
 
@@ -158,9 +186,8 @@ if uploaded_file is not None:
             file_hash=file_hash,
             text_type="text_pii_synthetic"
         )
-        
-        insert_pdf_record(uploaded_file.name, file_hash, pdf_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, results_json)
-        st_logger.info("PDF record inserted into the database.")
+        insert_record(uploaded_file.name, file_hash, file_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, results_json)
+        st_logger.info("Document inserted into the database.")
 
 # MAIN PANNEL
 
@@ -354,5 +381,5 @@ if st.button("Get Answer"):
         st.dataframe(evaluation_df)
 
     else:
-        st.warning("Please select at least one PDF or upload a new one and enter a question.")
+        st.warning("Please select at least one file or upload a new one and enter a question.")
 
