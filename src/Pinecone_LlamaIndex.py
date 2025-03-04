@@ -6,25 +6,37 @@
 # https://docs.pinecone.io/guides/get-started/quickstart 
 # https://docs.pinecone.io/guides/data/upsert-data
 
+# RAG EVALUATION
+# https://docs.confident-ai.com/docs/integrations-llamaindex
+
 import logging 
 import os
 import json
 import dotenv
+import openai
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import StorageContext, VectorStoreIndex, Document
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.openai import OpenAIEmbedding
+from deepeval.integrations.llama_index import (
+    DeepEvalAnswerRelevancyEvaluator,
+    DeepEvalFaithfulnessEvaluator,
+    DeepEvalContextualRelevancyEvaluator,
+    DeepEvalBiasEvaluator,
+    DeepEvalToxicityEvaluator,
+)
+from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric, ContextualRelevancyMetric, ContextualPrecisionMetric, ContextualRecallMetric
+from deepeval.test_case import LLMTestCase
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 # Load environment variables
 dotenv.load_dotenv()
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_region = os.getenv("PINECONE_REGION")
 openai_api_key = os.getenv("OPENAI_API_KEY")
-
 
 # Initialize OpenAI embeddings and LLM
 embedding_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=openai_api_key)
@@ -34,6 +46,8 @@ llm = OpenAI(
     max_new_tokens=500,
     temperature=0.0,
 )
+
+openai.api_request_timeout = 30  # Set timeout to 60 seconds
 
 def createOrGetPinecone(index_name: str):
     # Initialize Pinecone
@@ -102,4 +116,44 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
         node_text = response.source_nodes[i].get_text()
         nodes_text.append(node_text)
 
-    return (response, nodes_text)
+    evaluation_result = {}
+
+    """
+    evaluators = {
+        "Answer Relevancy": DeepEvalAnswerRelevancyEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Faithfulness": DeepEvalFaithfulnessEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Contextual Relevancy": DeepEvalContextualRelevancyEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Bias": DeepEvalBiasEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Toxicity": DeepEvalToxicityEvaluator(include_reason=False),
+    }
+
+    logging.info("Starting evaluation...")
+
+    for name, evaluator in evaluators.items():
+        eval_result = evaluator.evaluate_response(query=question, response=response)
+        evaluation_result[name] = eval_result.score
+    """
+
+    test_case = LLMTestCase(
+        input=question,
+        actual_output=response.response,
+        retrieval_context=[node.get_content() for node in response.source_nodes]
+    )
+
+    evaluators = {
+        "Answer Relevancy": AnswerRelevancyMetric(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Faithfulness": FaithfulnessMetric(model="gpt-4o-mini-2024-07-18", include_reason=False),
+        "Contextual Relevancy": ContextualRelevancyMetric(model="gpt-4o-mini-2024-07-18", include_reason=False),
+       # "Contextual Precision": ContextualPrecisionMetric(model="gpt-4o-mini-2024-07-18", include_reason=False),
+       # "Contextual Recall": ContextualRecallMetric(model="gpt-4o-mini-2024-07-18", include_reason=False),
+    }
+
+    logging.info("Starting evaluation...")
+
+    for name, metric in evaluators.items():
+        metric.measure(test_case)
+        evaluation_result[name] = metric.score
+    
+    return (response, nodes_text, evaluation_result)
+
+answer_relevancy_metric = AnswerRelevancyMetric()

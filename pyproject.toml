@@ -27,4 +27,5 @@ dependencies = [
     "openai",
     "chroma",
     "psycopg2",
+    "deepeval"
 ]

@@ -56,7 +56,7 @@ if selected_file:
     database_file = check_pdf_exists(selected_hash)  
     st_logger.info("Selected file from database")
 
-uploaded_file = st.sidebar.file_uploader("Upload a PDF file:", type="pdf")
+uploaded_file = st.sidebar.file_uploader("Upload a file:", type="pdf")
 
 st_operator = st.sidebar.selectbox("Choose the privacy-preserving method:", options=["DELETE", "REPLACE with label", "REPLACE with synthetic data", "Differential privacy"])
 
@@ -248,9 +248,11 @@ if st.button("Get Answer"):
         elif st_operator == "REPLACE with synthetic data":
             text_type_filter = "text_pii_synthetic"
 
-        (response_with_pii, nodes_response_with_pii) = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
-        (response_without_pii, nodes_response_without_pii) = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
-        
+        (response_with_pii, nodes_response_with_pii, evaluation_with_pii) = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
+        (response_without_pii, nodes_response_without_pii, evaluation_without_pii) = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
+        print(evaluation_with_pii)
+        print(evaluation_without_pii)
+
         st_logger.info("Answers retrieved from query engine.")
 
         col1, col2 = st.columns(2)
@@ -332,6 +334,25 @@ if st.button("Get Answer"):
                 st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
             else:
                 st.text("No findings")
+
+        # Create a list of evaluator types
+        evaluator_types = list(evaluation_with_pii.keys())
+
+        # Create a list of results for each evaluation
+        results_with_pii = [evaluation_with_pii[evaluator] for evaluator in evaluator_types]
+        results_without_pii = [evaluation_without_pii[evaluator] for evaluator in evaluator_types]
+
+        # Create a single DataFrame
+        evaluation_df = pd.DataFrame({
+            'Evaluator': evaluator_types,
+            'Result with PII': results_with_pii,
+            'Result without PII': results_without_pii
+        })
+
+        # Display the evaluation results as a table
+        st.subheader("Evaluation Results")
+        st.dataframe(evaluation_df)
+
     else:
         st.warning("Please select at least one PDF or upload a new one and enter a question.")
 
