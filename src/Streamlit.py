@@ -2,33 +2,29 @@
 # streamlit run Streamlit.py
 
 import logging
-import os
 import dotenv
 import pandas as pd
-import asyncio
-import hashlib
 import streamlit as st
 import json
 from presidio_analyzer import RecognizerResult
 
 from annotated_text import annotated_text
-from Storage import check_document_exists, insert_record, list_records
-from PDF_reader import convert_pdf_to_text
+from Storage import check_document_exists, list_records
 from Presidio_helpers import (
     analyze,
-    anonymize,
     annotate,
-    create_fake_data,
     analyzer_engine,
 )    
 from Presidio_OpenAI import OpenAIParams
-from Pinecone_LlamaIndex import loadDataPinecone, getResponse
+from Pinecone_LlamaIndex import getResponse
+from File_management import process_uploaded_file
+from question_generator import generate_questions_pii, evaluation
 
 try:
     st.set_page_config(
         page_title="GuardRAG",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed" #"expanded",
     )
 except Exception as e:
     pass 
@@ -45,6 +41,7 @@ database_file = None
 index_name = "masters-thesis-index"
 
 # SIDE BAR
+
 
 db_records = list_records()
 st_logger.info("DB records loaded.")
@@ -64,136 +61,15 @@ st.sidebar.selectbox("Choose the RAG model:", options=["Simple RAG", "Chatbot RA
 st.sidebar.selectbox("Choose the LLM:", options=["gpt-4o-mini"])
 
 if uploaded_file is not None:
-    file_extension = uploaded_file.name.split('.')[-1]  # Get the file extension
-    file_bytes = uploaded_file.read()
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
-    st_logger.info(f"File hash: {file_hash}")
-
-    existing_file = check_document_exists(file_hash)
-
-    if existing_file is not None:
-        database_file = existing_file
-        st_logger.info("Existing file found in the database.")
-    else:
-        st_logger.info("No existing file found, processing the uploaded file.")
-
-        if file_extension == "pdf":
-            # Convert PDF to text
-            text_with_pii = asyncio.run(convert_pdf_to_text(file_bytes))
-            st_logger.info("Converted PDF to text.")
-        elif file_extension == "txt":
-            # Directly use the content of the TXT file
-            text_with_pii = file_bytes.decode("utf-8")  # Decode bytes to string
-            st_logger.info("Using uploaded TXT file content.")
-
-        analyzer = analyzer_engine()
-        st_analyze_results = analyze(
-            text=text_with_pii,
-            language="en",
-            score_threshold=0.5,
-            allow_list=[],
-        )
-        st_logger.info(f"Text analysis completed.{st_analyze_results}" )
-
-        # Convert each RecognizerResult to a dictionary
-        results_as_dicts = [result.to_dict() for result in st_analyze_results]
-
-        # Serialize the list of dictionaries to a JSON string
-        results_json = json.dumps(results_as_dicts, indent=2)
-
-        # Log or display the JSON string
-        st_logger.info(f"Text analysis results in JSON: {results_json}")
-        
-        text_pii_deleted = anonymize(
-            text=text_with_pii,
-            operator="redact", 
-            analyze_results=st_analyze_results,
-        )
-        st_logger.info("Text with PII deleted.")
-        st_logger.info(f"Labels: {text_pii_deleted} ")
-
-        text_pii_labeled = anonymize(
-            text=text_with_pii,
-            operator="replace", 
-            analyze_results=st_analyze_results,
-        )
-        st_logger.info("Text with PII labeled.")        
-        st_logger.info(f"Labels: {text_pii_labeled} ")
-
-        open_ai_params = OpenAIParams(
-            openai_key=os.getenv("OPENAI_API_KEY"),
-            model="gpt-3.5-turbo-instruct",
-            api_base=None,
-            deployment_id="",
-            api_version=None,
-            api_type="openai",
-        )
-
-        def split_text_into_chunks(text, max_words):
-            """Split text into chunks of a specified maximum word count."""
-            words = text.split()
-            for i in range(0, len(words), max_words):
-                yield ' '.join(words[i:i + max_words])
-
-        text_chunks = list(split_text_into_chunks(text_with_pii, max_words=2500))
-
-        # List to hold synthetic data results
-        text_pii_synthetic = ''
-
-        for chunk in text_chunks:
-            st_analyze_chunk_results = analyze(
-                text=chunk,
-                language="en",
-                score_threshold=0.5,
-                allow_list=[],
-            )
-            text_chunk_pii_synthetic = create_fake_data(
-                chunk,
-                st_analyze_chunk_results,
-                open_ai_params,
-            )
-            text_pii_synthetic.join(text_chunk_pii_synthetic)
-        st_logger.info("Synthetic data created.")
-        st_logger.info(f"Synthetic: {text_pii_synthetic} ")
-
-        st_logger.info(f"loadDataPinecone: {uploaded_file.name} {file_hash} ")
-        
-        loadDataPinecone(
-            index_name=index_name,
-            text=text_with_pii,
-            file_name=uploaded_file.name,
-            file_hash=file_hash,
-            text_type="text_with_pii"
-        )
-        loadDataPinecone(
-            index_name=index_name,
-            text=text_pii_deleted.text,
-            file_name=uploaded_file.name,
-            file_hash=file_hash,
-            text_type="text_pii_deleted"
-        )
-        loadDataPinecone(
-            index_name=index_name,
-            text=text_pii_labeled.text,
-            file_name=uploaded_file.name,
-            file_hash=file_hash,
-            text_type="text_pii_labeled"
-        )
-        loadDataPinecone(
-            index_name=index_name,
-            text=text_pii_synthetic,
-            file_name=uploaded_file.name,
-            file_hash=file_hash,
-            text_type="text_pii_synthetic"
-        )
-        insert_record(uploaded_file.name, file_hash, file_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, results_json)
-        st_logger.info("Document inserted into the database.")
+    if uploaded_file is not None:
+        database_file = process_uploaded_file(uploaded_file, index_name, st_logger)
 
 # MAIN PANNEL
 
 if database_file is not None:
     st_logger.info("Database file is available.")
-    col1, col2 = st.columns(2)
+
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])     # col1, col2 = st.columns(2)
 
     col1.text_area(
         label="Input: text containing private information", 
@@ -231,6 +107,15 @@ if database_file is not None:
                 label_visibility="visible"
             )
             st_logger.info("Output for REPLACE with synthetic data method displayed.")
+    elif st_operator == "Differential privacy":
+        with col2:
+            st.text_area(
+                label="Output: private information - Differential privacy",
+                value=database_file['text_pii_dp_prompt'],
+                height=400,
+                label_visibility="visible"
+            )
+            st_logger.info("Output for Differential privacy method displayed.")
 
     # Assuming database_file['details'] is a JSON string
     st_analyze_results = [RecognizerResult(**item) for item in json.loads(database_file['details'])]
@@ -261,6 +146,14 @@ if database_file is not None:
 else:
     st.warning("No data available to display.")
 
+# Generate questions based on detected PII entities
+questions = generate_questions_pii(database_file['text_with_pii'], st_analyze_results)
+
+# Display generated questions
+with st.expander("Example Questions", expanded=False):
+    for question in questions:
+        st.write(question)
+
 st_logger.info("Waiting for user input...")
 question = st.text_input("Enter your question:")
 
@@ -274,6 +167,8 @@ if st.button("Get Answer"):
             text_type_filter = "text_pii_labeled"
         elif st_operator == "REPLACE with synthetic data":
             text_type_filter = "text_pii_synthetic"
+        elif st_operator == "Differential privacy":
+            text_type_filter = "text_pii_dp_prompt"
 
         (response_with_pii, nodes_response_with_pii, evaluation_with_pii) = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
         (response_without_pii, nodes_response_without_pii, evaluation_without_pii) = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
@@ -376,6 +271,7 @@ if st.button("Get Answer"):
             'Result without PII': results_without_pii
         })
 
+        # evaluation_df = evaluation(questions, database_file['file_hash'])
         # Display the evaluation results as a table
         st.subheader("Evaluation Results")
         st.dataframe(evaluation_df)
