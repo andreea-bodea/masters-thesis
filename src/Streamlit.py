@@ -2,14 +2,17 @@
 # streamlit run Streamlit.py
 
 import logging
+import hashlib
 import dotenv
 import pandas as pd
 import streamlit as st
 import json
+import asyncio
 from presidio_analyzer import RecognizerResult
+from PDF_reader import convert_pdf_to_text
 
 from annotated_text import annotated_text
-from Storage import check_document_exists, list_records
+from Storage import list_records, retrieve_record_by_name, retrieve_record_by_hash
 from Presidio_helpers import (
     analyze,
     annotate,
@@ -17,7 +20,7 @@ from Presidio_helpers import (
 )    
 from Presidio_OpenAI import OpenAIParams
 from Pinecone_LlamaIndex import getResponse
-from File_management import process_uploaded_file
+from Data_loader import load_data
 from question_generator import generate_questions_pii, evaluation
 
 try:
@@ -40,96 +43,63 @@ dotenv.load_dotenv()
 database_file = None
 index_name = "masters-thesis-index"
 
-# SIDE BAR
+# MAIN PANNEL
 
+col1, col2, col3 = st.columns([1, 1, 1])
 
+# INPUT - COLUMN 1
 db_records = list_records()
 st_logger.info("DB records loaded.")
-db_options = [f"{record['id']} - {record['file_name']} - {record['file_hash']}" for record in db_records]
-selected_file = st.sidebar.selectbox("Choose the data:", options=db_options)
+db_options = [record['file_name'] for record in db_records]
+selected_file = col1.selectbox("Choose the file:", options=db_options, index=None)
 st_logger.info(f"Selected file: {selected_file}")
-if selected_file:
-    selected_hash = selected_file.split(" - ")[2]  
-    database_file = check_document_exists(selected_hash)  
-    st_logger.info("Selected file from database")
+if selected_file is not None:
+    database_file = retrieve_record_by_name(selected_file)
+    st_logger.info("Record retrieved from database")
 
-uploaded_file = st.sidebar.file_uploader("Upload a file:", type=["pdf", "txt"])
-
-st_operator = st.sidebar.selectbox("Choose the privacy-preserving method:", options=["DELETE", "REPLACE with label", "REPLACE with synthetic data", "Differential privacy"])
-
-st.sidebar.selectbox("Choose the RAG model:", options=["Simple RAG", "Chatbot RAG"])
-st.sidebar.selectbox("Choose the LLM:", options=["gpt-4o-mini"])
-
+# INPUT - COLUMN 2
+uploaded_file = col2.file_uploader("Upload a file:", type=["pdf", "txt"])
 if uploaded_file is not None:
-    if uploaded_file is not None:
-        database_file = process_uploaded_file(uploaded_file, index_name, st_logger)
+    file_extension = uploaded_file.name.split('.')[-1]
+    file_bytes = uploaded_file.read()
+    if file_extension == "pdf":
+        text_with_pii = asyncio.run(convert_pdf_to_text(file_bytes)) # Convert PDF bytes to text
+    elif file_extension == "txt":
+        text_with_pii = file_bytes.decode("utf-8") # Decode bytes to string for TXT file
+    file_hash = hashlib.sha256(text_with_pii.encode("utf-8")).hexdigest()  # Compute hash from string
+    if retrieve_record_by_hash(file_hash) is not None:
+        database_file = retrieve_record_by_hash(file_hash)
+    else:
+        database_file = load_data(text_with_pii, uploaded_file.name, file_hash, file_bytes, index_name, st_logger)
 
-# MAIN PANNEL
+# INPUT - COLUMN 3
+with col3:
+    text_with_pii = st.text_area("Type your text here:", height=68)
+    user_file_name = st.text_input("Enter a name under which the text can be saved:") 
+    if st.button("Send"):
+        if not user_file_name:  # Check if user_file_name is empty
+            st.error("Please enter a name under which the text can be saved.")  # Display warning
+        else:
+            st_logger.info(f"User input sent: {text_with_pii}")
+            st_logger.info(f"User file name: {user_file_name}")
+            file_bytes = text_with_pii.encode("utf-8")  # Convert the text to bytes
+            file_hash = hashlib.sha256(file_bytes).hexdigest()  # Compute hash from bytes
+            if retrieve_record_by_hash(file_hash) is not None:
+                database_file = retrieve_record_by_hash(file_hash)
+            else:
+                database_file = load_data(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger) 
 
 if database_file is not None:
     st_logger.info("Database file is available.")
 
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])     # col1, col2 = st.columns(2)
-
-    col1.text_area(
-        label="Input: text containing private information", 
-        value=database_file['text_with_pii'], 
-        height=400, 
-        key="text_input",
-        label_visibility="visible" # visible, hidden, collapsed
-    )
-    st_logger.info("Input text area displayed.")
-
-    if st_operator == "DELETE": 
-        with col2:
-            st.text_area(
-                label="Output: private information deleted",
-                value=database_file['text_pii_deleted'],
-                height=400,
-                label_visibility="visible"
-            )
-            st_logger.info("Output for DELETE method displayed.")
-    elif st_operator == "REPLACE with label":
-        with col2:
-            st.text_area(
-                label="Output: private information replaced by labels",
-                value=database_file['text_pii_labeled'],
-                height=400,
-                label_visibility="visible"
-            )
-            st_logger.info("Output for REPLACE with label method displayed.")
-    elif st_operator == "REPLACE with synthetic data":
-        with col2:
-            st.text_area(
-                label="Output: private information replaced by synthetic data",
-                value=database_file['text_pii_synthetic'],
-                height=400,
-                label_visibility="visible"
-            )
-            st_logger.info("Output for REPLACE with synthetic data method displayed.")
-    elif st_operator == "Differential privacy":
-        with col2:
-            st.text_area(
-                label="Output: private information - Differential privacy",
-                value=database_file['text_pii_dp_prompt'],
-                height=400,
-                label_visibility="visible"
-            )
-            st_logger.info("Output for Differential privacy method displayed.")
-
-    # Assuming database_file['details'] is a JSON string
     st_analyze_results = [RecognizerResult(**item) for item in json.loads(database_file['details'])]
-
-    # Put PII entities in a collapsed expander
-    with st.expander("Detected PII Entities", expanded=False):
+    with st.expander("Text with detected Personally Identifiable Information (PII)", expanded=True):
         annotated_tokens = annotate(text=database_file['text_with_pii'], analyze_results=st_analyze_results)
         annotated_text(*annotated_tokens)
 
-    # Put findings table in a collapsed expander
     with st.expander("Detailed Findings", expanded=False):
         if database_file['details']:
             df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results])
-            # Create the text slice once, then reuse it.
             df["Text"] = [database_file['text_with_pii'][res.start:res.end] for res in st_analyze_results]
             df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
                 {
@@ -142,84 +112,134 @@ if database_file is not None:
             )
             st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
         else:
-            st.text("No findings")
+            st.text("No Personally identifiable information (PII) found")
+
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+
+    col1.text_area(
+        label="Text with PII deleted",
+        value=database_file['text_pii_deleted'],
+        height=400,
+        label_visibility="visible"
+    )
+    st_logger.info("Output for DELETE method displayed.")
+
+    col2.text_area(
+        label="Text with PII replaced by labels",
+        value=database_file['text_pii_labeled'],
+        height=400,
+        label_visibility="visible"
+    )
+    st_logger.info("Output for REPLACE with label method displayed.")
+
+    col3.text_area(
+        label="Text with PII deleted replaced by synthetic data",
+        value=database_file['text_pii_synthetic'],
+        height=400,
+        label_visibility="visible"
+    )
+    st_logger.info("Output for REPLACE with synthetic data method displayed.")
+
+    col4.text_area(
+        label="Text transformed through differential privacy method",
+        value=database_file['text_pii_dp_prompt'],
+        height=400,
+        label_visibility="visible"
+    )
+    st_logger.info("Output for differential privacy method displayed.")
+
 else:
-    st.warning("No data available to display.")
+    st.warning("Please choose an existing file, upload a new file or create a new file")
 
-# Generate questions based on detected PII entities
-questions = generate_questions_pii(database_file['text_with_pii'], st_analyze_results)
-
-# Display generated questions
-with st.expander("Example Questions", expanded=False):
-    for question in questions:
-        st.write(question)
+# questions = generate_questions_pii(database_file['text_with_pii'], st_analyze_results)
+# with st.expander("Example Questions", expanded=False):
+#    for question in questions:
+#       st.write(question)
 
 st_logger.info("Waiting for user input...")
 question = st.text_input("Enter your question:")
 
 if st.button("Get Answer"):
     st_logger.info("Get Answer button clicked.")
+
     if question and database_file:
 
-        if st_operator == "DELETE": 
-            text_type_filter = "text_pii_deleted"
-        elif st_operator == "REPLACE with label":
-            text_type_filter = "text_pii_labeled"
-        elif st_operator == "REPLACE with synthetic data":
-            text_type_filter = "text_pii_synthetic"
-        elif st_operator == "Differential privacy":
-            text_type_filter = "text_pii_dp_prompt"
-
         (response_with_pii, nodes_response_with_pii, evaluation_with_pii) = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
-        (response_without_pii, nodes_response_without_pii, evaluation_without_pii) = getResponse(index_name, question, [database_file['file_hash'], text_type_filter])
-        print(evaluation_with_pii)
-        print(evaluation_without_pii)
+        (response_deleted, nodes_response_deleted, evaluation_deleted) = getResponse(index_name, question, [database_file['file_hash'], "text_pii_deleted"])
+        (response_labeled, nodes_response_labeled, evaluation_labeled) = getResponse(index_name, question, [database_file['file_hash'], "text_pii_labeled"])
+        (response_synthetic, nodes_response_synthetic, evaluation_synthetic) = getResponse(index_name, question, [database_file['file_hash'], "text_pii_synthetic"])
+        (response_dp, nodes_response_dp, evaluation_dp) = getResponse(index_name, question, [database_file['file_hash'], "text_pii_dp_prompt"])
+        st_logger.info("Answers and nodes succesfully retrieved from query engine.")
 
-        st_logger.info("Answers retrieved from query engine.")
-
-        col1, col2 = st.columns(2)
-
-        col1.text_area(
-            label="Response based on the text containing private information", 
+        st.text_area(
+            label="Response based on the text containing PII", 
             value=response_with_pii, 
             height=200, 
             key="text_input_with_pii",
             label_visibility="visible" # visible, hidden, collapsed
         )
 
-        col2.text_area(
-            label="Response based on the text with applied privacy-preverving method", 
-            value=response_without_pii, 
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+
+        col1.text_area(
+            label="Response based on the text with PII deleted", 
+            value=response_deleted, 
             height=200, 
-            key="text_input_without_pii",
+            key="text_pii_deleted",
+            label_visibility="visible" # visible, hidden, collapsed
+        )
+        col2.text_area(
+            label="Response based on the text with PII replaced by labels", 
+            value=response_labeled, 
+            height=200, 
+            key="text_pii_labeled",
+            label_visibility="visible" # visible, hidden, collapsed
+        )
+        col3.text_area(
+            label="Response based on the text with PII replaced by synthetic data", 
+            value=response_synthetic, 
+            height=200, 
+            key="text_pii_synthetic",
+            label_visibility="visible" # visible, hidden, collapsed
+        )
+        col4.text_area(
+            label="Response based on the text with PII transformed with differential private method", 
+            value=response_dp, 
+            height=200, 
+            key="text_pii_dp_prompt",
             label_visibility="visible" # visible, hidden, collapsed
         )
 
-        st_logger.info("Nodes retrieved from query engine.")
+        with st.expander("Nodes retrieved from the text containing PII", expanded=False):
+            st.write(nodes_response_with_pii) 
 
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
-        # Display using st.expander for collapsible sections
         with col1:
-            with st.expander("Nodes retrieved from the text containing private information", expanded=False):
-                st.write(nodes_response_with_pii)  # Automatically formats the list
-
+            with st.expander("Nodes retrieved from the text with deleted PII", expanded=False):
+                st.write(nodes_response_deleted) 
         with col2:
+            with st.expander("Nodes retrieved from the text with PII replaced by labels", expanded=False):
+                st.write(nodes_response_labeled) 
+        with col3:
+            with st.expander("Nodes retrieved from the text with PII replaced by syntehtic data", expanded=False):
+                st.write(nodes_response_synthetic) 
+        with col4:
             with st.expander("Nodes retrieved from the text with applied privacy-preserving method", expanded=False):
-                st.write(nodes_response_without_pii)  # Automatically formats the list
+                st.write(nodes_response_dp) 
 
-        analyzer = analyzer_engine()
-        st_analyze_results = analyze(
-            text=str(response_with_pii),
-            language="en",
-            score_threshold=0.5,
-            allow_list=[],
-        )
-        with st.expander("Private Information in Response 1", expanded=False):
+        def create_pii_table(text):
+            analyzer = analyzer_engine()
+            st_analyze_results = analyze(
+                text=text,
+                language="en",
+                score_threshold=0.5,
+                allow_list=[],
+            )
             if st_analyze_results:
                 df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results])
                 # Create the text slice once, then reuse it.
-                df["Text"] = [str(response_with_pii)[res.start:res.end] for res in st_analyze_results]
+                df["Text"] = [text[res.start:res.end] for res in st_analyze_results]
                 df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
                     {
                         "entity_type": "Entity type",
@@ -229,53 +249,44 @@ if st.button("Get Answer"):
                     },
                     axis=1,
                 )
-                st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
-            else:
-                st.text("No findings")
+                return df_subset
+ 
+        with st.expander("PII in response based on raw text", expanded=False):
+            st.dataframe(create_pii_table(str(response_with_pii)).reset_index(drop=True), use_container_width=True)
+            
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
-        st_analyze_results_2 = analyze(
-            text=str(response_without_pii),
-            language="en",
-            score_threshold=0.5,
-            allow_list=[],
-        )
-        with st.expander("Private Information in Response 1", expanded=False):
-            if st_analyze_results_2:
-                df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results_2])
-                # Create the text slice once, then reuse it.
-                df["Text"] = [str(response_without_pii)[res.start:res.end] for res in st_analyze_results_2]
-                df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
-                    {
-                        "entity_type": "Entity type",
-                        "start": "Start",
-                        "end": "End",
-                        "score": "Confidence",
-                    },
-                    axis=1,
-                )
-                st.dataframe(df_subset.reset_index(drop=True), use_container_width=True)
-            else:
-                st.text("No findings")
+        with col1:
+            with st.expander("PII in response based on text with PII deleted", expanded=False):
+                st.dataframe(create_pii_table(str(response_deleted)).reset_index(drop=True), use_container_width=True)
+        with col2:
+            with st.expander("PII in response based on text with PII labeled", expanded=False):
+                st.dataframe(create_pii_table(str(response_labeled)).reset_index(drop=True), use_container_width=True)
+        with col3:
+            with st.expander("PII in response based on text with syntethic PII", expanded=False):
+                st.dataframe(create_pii_table(str(response_synthetic)).reset_index(drop=True), use_container_width=True)
+        with col4:
+            with st.expander("PII in response based on differentially private text", expanded=False):
+                st.dataframe(create_pii_table(str(response_dp)).reset_index(drop=True), use_container_width=True)
 
-        # Create a list of evaluator types
+        # EVALUATION 
         evaluator_types = list(evaluation_with_pii.keys())
+        eval_results_with_pii = [evaluation_with_pii[evaluator] for evaluator in evaluator_types]
+        eval_results_deleted = [evaluation_deleted[evaluator] for evaluator in evaluator_types]
+        eval_results_labeled = [evaluation_labeled[evaluator] for evaluator in evaluator_types]
+        eval_results_synthetic = [evaluation_synthetic[evaluator] for evaluator in evaluator_types]
+        eval_results_dp = [evaluation_dp[evaluator] for evaluator in evaluator_types]
 
-        # Create a list of results for each evaluation
-        results_with_pii = [evaluation_with_pii[evaluator] for evaluator in evaluator_types]
-        results_without_pii = [evaluation_without_pii[evaluator] for evaluator in evaluator_types]
-
-        # Create a single DataFrame
         evaluation_df = pd.DataFrame({
             'Evaluator': evaluator_types,
-            'Result with PII': results_with_pii,
-            'Result without PII': results_without_pii
+            'Response with PII': eval_results_with_pii,
+            'Response PII deleted': eval_results_deleted,
+            'Response PII labeled': eval_results_labeled,
+            'Response PII synthetic': eval_results_synthetic,
+            'Response PII DP': eval_results_dp        
         })
 
         # evaluation_df = evaluation(questions, database_file['file_hash'])
         # Display the evaluation results as a table
         st.subheader("Evaluation Results")
         st.dataframe(evaluation_df)
-
-    else:
-        st.warning("Please select at least one file or upload a new one and enter a question.")
-

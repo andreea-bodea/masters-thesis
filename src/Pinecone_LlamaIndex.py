@@ -106,7 +106,7 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
     # Create a VectorStoreIndex and query engine
     similarity_top_k = 2
     index = VectorStoreIndex.from_vector_store(vector_store)
-    query_engine = index.as_query_engine(llm=llm, similarity_top_k=similarity_top_k, filters=metadata_filters)
+    query_engine = index.as_query_engine(llm=llm, streaming=False, similarity_top_k=similarity_top_k, filters=metadata_filters)
     
     # Query the index and return response
     response = query_engine.query(question)
