@@ -26,6 +26,7 @@ Requires-Dist: torch
 Requires-Dist: openai
 Requires-Dist: chroma
 Requires-Dist: psycopg2
+Requires-Dist: deepeval
 
 # masters-thesis
 Privacy Issues and Privacy-preserving Mechanisms in Retrieval-Augmented Generation Systems

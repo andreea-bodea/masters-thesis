@@ -20,13 +20,13 @@ from Presidio_helpers import (
 )    
 from Presidio_OpenAI import OpenAIParams
 from Pinecone_LlamaIndex import getResponse
-from Data_loader import load_data
+from Data_loader import load_data, load_data_de
 from question_generator import generate_questions_pii, evaluation
 
 try:
     st.set_page_config(
         page_title="GuardRAG",
-        layout="wide",
+        layout="wide", #"centered" 
         initial_sidebar_state="collapsed" #"expanded",
     )
 except Exception as e:
@@ -45,13 +45,13 @@ index_name = "masters-thesis-index"
 
 # MAIN PANNEL
 
-col1, col2, col3 = st.columns([1, 1, 1])
+col1, col2, col3 = st.columns([1, 1, 2])
 
 # INPUT - COLUMN 1
 db_records = list_records()
 st_logger.info("DB records loaded.")
 db_options = [record['file_name'] for record in db_records]
-selected_file = col1.selectbox("Choose the file:", options=db_options, index=None)
+selected_file = col1.selectbox("Choose a file:", options=db_options, index=None)
 st_logger.info(f"Selected file: {selected_file}")
 if selected_file is not None:
     database_file = retrieve_record_by_name(selected_file)
@@ -59,35 +59,49 @@ if selected_file is not None:
 
 # INPUT - COLUMN 2
 uploaded_file = col2.file_uploader("Upload a file:", type=["pdf", "txt"])
+language = col2.selectbox("Select language:", options=["en", "de"], index=None, key="file language")  # Language selection box
+if uploaded_file is not None and not language:
+    st.error("Please enter the language of your file.")
 if uploaded_file is not None:
     file_extension = uploaded_file.name.split('.')[-1]
     file_bytes = uploaded_file.read()
     if file_extension == "pdf":
-        text_with_pii = asyncio.run(convert_pdf_to_text(file_bytes)) # Convert PDF bytes to text
+        text_with_pii = asyncio.run(convert_pdf_to_text(file_bytes))  # Await the async function
     elif file_extension == "txt":
-        text_with_pii = file_bytes.decode("utf-8") # Decode bytes to string for TXT file
+        text_with_pii = file_bytes.decode("utf-8")  # Decode bytes to string for TXT file
     file_hash = hashlib.sha256(text_with_pii.encode("utf-8")).hexdigest()  # Compute hash from string
     if retrieve_record_by_hash(file_hash) is not None:
         database_file = retrieve_record_by_hash(file_hash)
-    else:
-        database_file = load_data(text_with_pii, uploaded_file.name, file_hash, file_bytes, index_name, st_logger)
+    elif language == "de":
+        database_file = load_data_de(text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), index_name, st_logger)
+    else:        
+        database_file = load_data(text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), index_name, st_logger)
 
 # INPUT - COLUMN 3
 with col3:
     text_with_pii = st.text_area("Type your text here:", height=68)
-    user_file_name = st.text_input("Enter a name under which the text can be saved:") 
+    user_file_name = st.text_input("Enter a name so the text can be saved:")
+    language = st.selectbox("Select language:", options=["en", "de"], index=None, key="typed text language")  # Language selection box
+
     if st.button("Send"):
         if not user_file_name:  # Check if user_file_name is empty
             st.error("Please enter a name under which the text can be saved.")  # Display warning
+        elif not language:
+            st.error("Please enter the language of your text.")  # Display warning
         else:
             st_logger.info(f"User input sent: {text_with_pii}")
             st_logger.info(f"User file name: {user_file_name}")
+            st_logger.info(f"Selected language: {language}")  # Log the selected language
             file_bytes = text_with_pii.encode("utf-8")  # Convert the text to bytes
             file_hash = hashlib.sha256(file_bytes).hexdigest()  # Compute hash from bytes
             if retrieve_record_by_hash(file_hash) is not None:
                 database_file = retrieve_record_by_hash(file_hash)
+            elif language == "de":
+                database_file = load_data_de(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger)
             else:
-                database_file = load_data(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger) 
+                database_file = load_data(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger)
+
+# PII FINDINGS 
 
 if database_file is not None:
     st_logger.info("Database file is available.")
@@ -133,7 +147,7 @@ if database_file is not None:
     st_logger.info("Output for REPLACE with label method displayed.")
 
     col3.text_area(
-        label="Text with PII deleted replaced by synthetic data",
+        label="Text with PII replaced by synthetic data",
         value=database_file['text_pii_synthetic'],
         height=400,
         label_visibility="visible"
@@ -156,8 +170,12 @@ else:
 #    for question in questions:
 #       st.write(question)
 
+# RAG 
+
 st_logger.info("Waiting for user input...")
 question = st.text_input("Enter your question:")
+
+# ANSWERS 
 
 if st.button("Get Answer"):
     st_logger.info("Get Answer button clicked.")
@@ -210,6 +228,7 @@ if st.button("Get Answer"):
             label_visibility="visible" # visible, hidden, collapsed
         )
 
+        # NODES
         with st.expander("Nodes retrieved from the text containing PII", expanded=False):
             st.write(nodes_response_with_pii) 
 
@@ -228,6 +247,7 @@ if st.button("Get Answer"):
             with st.expander("Nodes retrieved from the text with applied privacy-preserving method", expanded=False):
                 st.write(nodes_response_dp) 
 
+        # PII IN RESPONSE
         def create_pii_table(text):
             analyzer = analyzer_engine()
             st_analyze_results = analyze(
@@ -238,7 +258,6 @@ if st.button("Get Answer"):
             )
             if st_analyze_results:
                 df = pd.DataFrame.from_records([r.to_dict() for r in st_analyze_results])
-                # Create the text slice once, then reuse it.
                 df["Text"] = [text[res.start:res.end] for res in st_analyze_results]
                 df_subset = df[["entity_type", "Text", "start", "end", "score"]].rename(
                     {
@@ -250,6 +269,7 @@ if st.button("Get Answer"):
                     axis=1,
                 )
                 return df_subset
+            return pd.DataFrame(columns=["Entity type", "Text", "Start", "End", "Confidence"])  # Return an empty DataFrame
  
         with st.expander("PII in response based on raw text", expanded=False):
             st.dataframe(create_pii_table(str(response_with_pii)).reset_index(drop=True), use_container_width=True)
@@ -258,16 +278,20 @@ if st.button("Get Answer"):
 
         with col1:
             with st.expander("PII in response based on text with PII deleted", expanded=False):
-                st.dataframe(create_pii_table(str(response_deleted)).reset_index(drop=True), use_container_width=True)
+                if response_deleted is not None:
+                    st.dataframe(create_pii_table(str(response_deleted)).reset_index(drop=True), use_container_width=True)
         with col2:
             with st.expander("PII in response based on text with PII labeled", expanded=False):
-                st.dataframe(create_pii_table(str(response_labeled)).reset_index(drop=True), use_container_width=True)
+                if response_labeled is not None:
+                    st.dataframe(create_pii_table(str(response_labeled)).reset_index(drop=True), use_container_width=True)
         with col3:
             with st.expander("PII in response based on text with syntethic PII", expanded=False):
-                st.dataframe(create_pii_table(str(response_synthetic)).reset_index(drop=True), use_container_width=True)
+                if response_synthetic is not None:
+                    st.dataframe(create_pii_table(str(response_synthetic)).reset_index(drop=True), use_container_width=True)
         with col4:
             with st.expander("PII in response based on differentially private text", expanded=False):
-                st.dataframe(create_pii_table(str(response_dp)).reset_index(drop=True), use_container_width=True)
+                if response_dp is not None:
+                    st.dataframe(create_pii_table(str(response_dp)).reset_index(drop=True), use_container_width=True)
 
         # EVALUATION 
         evaluator_types = list(evaluation_with_pii.keys())

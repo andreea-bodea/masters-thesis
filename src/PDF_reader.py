@@ -1,7 +1,6 @@
 import base64
 import io
 import os
-from functools import lru_cache
 
 import pymupdf
 from dotenv import load_dotenv
@@ -9,7 +8,9 @@ from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from PIL import Image
 from tqdm.asyncio import tqdm
+import nest_asyncio
 
+nest_asyncio.apply()
 load_dotenv()
 
 openai_model = ChatOpenAI(
@@ -30,8 +31,6 @@ async def pdf_page_to_base64(buffer: bytes, page_num: int) -> str:
     img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
     return img_str
 
-
-@lru_cache(maxsize=128)
 async def pdf_page_to_text(buffer: bytes, page_num: int) -> str:
     base64_image = await pdf_page_to_base64(buffer, page_num)
     response = model.invoke(
@@ -53,8 +52,6 @@ async def pdf_page_to_text(buffer: bytes, page_num: int) -> str:
     )
     return response.content
 
-
-@lru_cache(maxsize=128)
 async def convert_pdf_to_text(buffer: bytes, i: int | None = None) -> str:
     num_pages = pymupdf.open("pdf", buffer).page_count
     tasks = [pdf_page_to_text(buffer, page_num) for page_num in range(num_pages)]
