@@ -10,11 +10,9 @@ src/Pinecone_loader.py
 src/Presidio_OpenAI.py
 src/Presidio_anoymization.py
 src/Presidio_helpers.py
-src/Storage.py
 src/Streamlit.py
 src/Streamlit_Presidio.py
 src/cache.py
-src/create_table.py
 src/test.py
 src/redaction_bench.egg-info/PKG-INFO
 src/redaction_bench.egg-info/SOURCES.txt

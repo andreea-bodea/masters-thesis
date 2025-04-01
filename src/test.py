@@ -1,33 +1,15 @@
-# Import the functions from Pinecone_LlamaIndex
-from Pinecone_LlamaIndex import loadDataPinecone, getResponse
+import torch
+from transformers import AutoModelForMaskedLM, AutoTokenizer, AutoModel
+import psutil
 
-# Test loadDataPinecone function
-def test_loadDataPinecone():
-    try:
-        loadDataPinecone(
-            index_name="test",
-            text="test document 4",
-            file_name="test file for Andreea",
-            file_hash="HASH HASH HASH ",
-            text_type="text_with_pii TEST"
-        )
-        print("loadDataPinecone: Success")
-    except Exception as e:
-        print(f"loadDataPinecone: Failed with error {e}")
+tokenizer = AutoTokenizer.from_pretrained("roberta-base")
+print("tokenizer loaded successfully!")
 
-# Test getResponse function
-def test_getResponse():
-    try:
-        response = getResponse(
-            index_name="test", 
-            question="What are the types of RAG systems?"
-        )
-        print("getResponse: Success")
-        print("Response:", response)
-    except Exception as e:
-        print(f"getResponse: Failed with error {e}")
+model = AutoModelForMaskedLM.from_pretrained("roberta-base")
+print("Model loaded successfully!")
 
-# Run tests
-if __name__ == "__main__":
-    test_loadDataPinecone()
-    test_getResponse()
+raw_model = AutoModel.from_pretrained("roberta-base", output_hidden_states=True, output_attentions=True)
+print("raw_model loaded successfully!")
+
+print(f"Available memory: {psutil.virtual_memory().available / (1024 * 1024 * 1024):.2f} GB")
+   
