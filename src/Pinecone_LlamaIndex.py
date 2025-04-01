@@ -50,10 +50,7 @@ llm = OpenAI(
 openai.api_request_timeout = 30  # Set timeout to 60 seconds
 
 def createOrGetPinecone(index_name: str):
-    # Initialize Pinecone
     pinecone = Pinecone(api_key=pinecone_api_key)
-
-    # Create or get a Pinecone index
     if index_name not in pinecone.list_indexes().names():
         pinecone.create_index(
             name=index_name,
@@ -67,20 +64,13 @@ def createOrGetPinecone(index_name: str):
     return pinecone.Index(index_name)
 
 def loadDataPinecone(index_name: str, text: str, file_name: str, file_hash: str, text_type: str):
-
     pinecone_index = createOrGetPinecone(index_name)
-
-    # Create a document
     document = Document(
         text=text,
         metadata={"file_name": file_name, "file_hash": file_hash, "text_type": text_type}
     )
-
-    # Set up Pinecone as the vector store
     vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
-
-    # Create the index and insert the document
     index = VectorStoreIndex.from_documents(
         documents=[document],
         storage_context=storage_context,
@@ -90,25 +80,17 @@ def loadDataPinecone(index_name: str, text: str, file_name: str, file_hash: str,
     )
 
 def getResponse(index_name: str, question: str, filters: list) -> str:
-   
     pinecone_index = createOrGetPinecone(index_name)
-
-    # Set up Pinecone vector store
     vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
-
+    index = VectorStoreIndex.from_vector_store(vector_store)
     metadata_filters = MetadataFilters(
         filters=[
             ExactMatchFilter(key="file_hash", value=filters[0]),
             ExactMatchFilter(key="text_type", value=filters[1])
         ]
     )
-
-    # Create a VectorStoreIndex and query engine
     similarity_top_k = 2
-    index = VectorStoreIndex.from_vector_store(vector_store)
     query_engine = index.as_query_engine(llm=llm, streaming=False, similarity_top_k=similarity_top_k, filters=metadata_filters)
-    
-    # Query the index and return response
     response = query_engine.query(question)
 
     nodes_text = []
@@ -117,7 +99,11 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
         nodes_text.append(node_text)
 
     evaluation_result = {}
+    # evaluation_result = evaluate_response(question, response)
 
+    return (response, nodes_text, evaluation_result)
+
+def evaluate_response(question, response):
     """
     evaluators = {
         "Answer Relevancy": DeepEvalAnswerRelevancyEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
@@ -126,9 +112,7 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
         "Bias": DeepEvalBiasEvaluator(model="gpt-4o-mini-2024-07-18", include_reason=False),
         "Toxicity": DeepEvalToxicityEvaluator(include_reason=False),
     }
-
     logging.info("Starting evaluation...")
-
     for name, evaluator in evaluators.items():
         eval_result = evaluator.evaluate_response(query=question, response=response)
         evaluation_result[name] = eval_result.score
@@ -153,7 +137,3 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
     for name, metric in evaluators.items():
         metric.measure(test_case)
         evaluation_result[name] = metric.score
-    
-    return (response, nodes_text, evaluation_result)
-
-answer_relevancy_metric = AnswerRelevancyMetric()
