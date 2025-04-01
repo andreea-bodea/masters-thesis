@@ -8,7 +8,7 @@ from Database_management import insert_record, insert_record_complex, retrieve_r
 from Presidio_helpers import analyze, anonymize, create_fake_data, analyzer_engine
 from Presidio_OpenAI import OpenAIParams
 from Pinecone_LlamaIndex import loadDataPinecone
-from Differential_Privacy import diff_privacy_dp_prompt, diff_privacy_diffractor
+from DP import diff_privacy_dp_prompt, diff_privacy_diffractor, diff_privacy_dpmlm
 
 dotenv.load_dotenv()
 

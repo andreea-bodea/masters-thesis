@@ -1,12 +1,12 @@
+from DPMLM.DPMLM import DPMLM
 from Diffractor.Diffractor import Lists, Diffractor
 from LLMDP import DPPrompt
-from DPMLM.DPMLM import DPMLM
 import nltk
 from nltk.data import find
 
 def diff_privacy_dpmlm(text_with_pii, epsilon):
     print("entered fct")
-    dpmlm = DPMLM(MODEL="distilroberta-base", SPACY="en_core_web_md", alpha=0.003)
+    dpmlm = DPMLM(MODEL="roberta-base", SPACY="en_core_web_md", alpha=0.003)
     print("initialization done")
     text_pii_dpmlm, perturbed, total = dpmlm.dpmlm_rewrite(text_with_pii, epsilon=epsilon)
     print("Transformed Sentence:", text_pii_dpmlm)
@@ -47,8 +47,6 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
     diff.cleanup()
     return ' '.join(perturbed_text)
 
-
-
 if __name__ == "__main__":
 
     # text = "This is a sample text containing sensitive information like a phone number 123-456-7890."
@@ -60,29 +58,25 @@ if __name__ == "__main__":
     # Diffractor
     print("Initial text:", text)
     epsilon = 1.5
-    result_diffractor = diff_privacy_diffractor(text_with_pii=text, epsilon=epsilon) 
+    result_diffractor = diff_privacy_diffractor(text, epsilon) 
     print("Epsilon:", epsilon)
     print("Perturbed Text:", result_diffractor)
-    """
-
-    """
+    """ 
+    """   
     # DP Prompt
     print("Initial text:", text)
     epsilon = 1000
-    result_dp_prompt = diff_privacy_dp_prompt(text, epsilon=epsilon)
+    result_dp_prompt = diff_privacy_dp_prompt(text, epsilon)
     print("Epsilon:", epsilon)
     print("Perturbed Text:")
     sentences = nltk.sent_tokenize(result_dp_prompt)
     for sentence in sentences:
         print(sentence)
     """
-
+    
     # DP MLM
     print("Initial text:", text)
     epsilon = 100
-    result_dpmlm = diff_privacy_dpmlm(text, epsilon=epsilon)
+    result_dpmlm = diff_privacy_dpmlm(text, epsilon)
     print("Epsilon:", epsilon)
-    print("Perturbed Text:")
-    sentences = nltk.sent_tokenize(result_dpmlm)
-    for sentence in sentences:
-        print(sentence)
+    print("Perturbed Text:", result_dpmlm)

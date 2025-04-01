@@ -275,9 +275,8 @@ class DPMLM():
     def __init__(self, MODEL="roberta-base", SPACY="en_core_web_md", alpha=0.003):
         print("entered DPML initialization")
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL)
-        gc.collect()
         print("tokenizer initialization done")
-        self.lm_model = AutoModelForMaskedLM.from_pretrained(MODEL, low_cpu_mem_usage=True, device_map="cpu")
+        self.lm_model = AutoModelForMaskedLM.from_pretrained(MODEL)
         print("lm_model initialization done")
         self.raw_model = AutoModel.from_pretrained(MODEL, output_hidden_states=True, output_attentions=True)
         print("raw_model initialization done")
@@ -288,8 +287,8 @@ class DPMLM():
         self.sensitivity = abs(self.clip_max - self.clip_min)
 
         # self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        # self.device = "mps" if torch.backends.mps.is_available() else "cpu"
-        self.device = "cpu"
+        self.device = "mps" if torch.backends.mps.is_available() else "cpu"
+        # self.device = "cpu"
         print(f"DPMLM - Device set to use {self.device}")
         self.lm_model = self.lm_model.to(self.device)
         self.raw_model = self.raw_model.to(self.device)
