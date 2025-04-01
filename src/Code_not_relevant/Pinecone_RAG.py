@@ -44,4 +44,3 @@ print()
 # Print the source node for debugging
 nodes = index.as_retriever(similarity_top_k=1).retrieve("What are the types of RAG?")
 pprint_source_node(nodes[0])
-

@@ -42,5 +42,3 @@ index = VectorStoreIndex.from_documents(
     storage_context=storage_context,
     show_progress=True
 )
-
-# Optionally, save the index or any necessary state if needed
