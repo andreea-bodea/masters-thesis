@@ -9,24 +9,33 @@ from presidio_analyzer import (
     RecognizerResult,
     RecognizerRegistry,
 )
-from presidio_analyzer.nlp_engine import (
-    NlpEngine,
-    NlpEngineProvider,
-)
+from presidio_analyzer.nlp_engine import NlpEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
-
 from Presidio_OpenAI import (
     call_completion_model,
     OpenAIParams,
     create_prompt,
+)
+from Presidio_NLP_engine import (
+    create_nlp_engine_with_spacy,
+    create_nlp_engine_with_flair
 )
 
 logger = logging.getLogger("presidio-streamlit")
 
 @st.cache_resource
 def nlp_engine_and_registry() -> Tuple[NlpEngine, RecognizerRegistry]:
+    """Create the NLP Engine instance based on the requested model."""
+
+    # "spacy"
+    # return create_nlp_engine_with_spacy()
+    # "flair" in model_family.lower():
+    return create_nlp_engine_with_flair()
+
     """Create the NLP Engine instance using spaCy."""
+    """
+    # SPACY
     nlp_configuration = {
         "nlp_engine_name": "spacy",
         "models": [{"lang_code": "en", "model_name": "en_core_web_lg"}],
@@ -54,6 +63,7 @@ def nlp_engine_and_registry() -> Tuple[NlpEngine, RecognizerRegistry]:
     registry.load_predefined_recognizers(nlp_engine=nlp_engine)
 
     return nlp_engine, registry
+    """
 
 @st.cache_resource
 def analyzer_engine() -> AnalyzerEngine:

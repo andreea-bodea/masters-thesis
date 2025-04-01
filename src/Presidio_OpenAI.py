@@ -12,11 +12,11 @@ OpenAIParams = namedtuple(
     ["openai_key", "model", "api_base", "deployment_id", "api_version", "api_type"],
 )
 
-
+# "This model's maximum context length is 4097 tokens, however you requested 4153 tokens (2105 in your prompt; 2048 for the completion). Please reduce your prompt; or completion length."
 def call_completion_model(
     prompt: str,
     openai_params: OpenAIParams,
-    max_tokens: Optional[int] = 256,
+    max_tokens: Optional[int] = 2048,
 ) -> str:
     """Creates a request for the OpenAI Completion service and returns the response.
 
@@ -44,10 +44,9 @@ def create_prompt(anonymized_text: str) -> str:
 
     prompt = f"""
     Your role is to create synthetic text based on de-identified text with placeholders instead of Personally Identifiable Information (PII).
-    Replace the placeholders (e.g. ,<PERSON>, {{DATE}}, {{ip_address}}) with fake values.
+    Replace the placeholders (e.g. ,<PERSON>, {{DATE}} with fake values.
 
     Instructions:
-
     a. Use completely random numbers, so every digit is drawn between 0 and 9.
     b. Use realistic names that come from diverse genders, ethnicities and countries.
     c. If there are no placeholders, return the text as is.
@@ -55,8 +54,6 @@ def create_prompt(anonymized_text: str) -> str:
     e. If PII exists in the input, replace it with fake values in the output.
     f. Remove whitespace before and after the generated text
     
-    input: [[TEXT STARTS]] How do I change the limit on my credit card {{credit_card_number}}?[[TEXT ENDS]]
-    output: How do I change the limit on my credit card 2539 3519 2345 1555?
     input: [[TEXT STARTS]]<PERSON> was the chief science officer at <ORGANIZATION>.[[TEXT ENDS]]
     output: Katherine Buckjov was the chief science officer at NASA.
     input: [[TEXT STARTS]]Cameroon lives in <LOCATION>.[[TEXT ENDS]]

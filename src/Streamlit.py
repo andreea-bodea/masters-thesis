@@ -12,16 +12,14 @@ from presidio_analyzer import RecognizerResult
 from PDF_reader import convert_pdf_to_text
 
 from annotated_text import annotated_text
-from Storage import list_records, retrieve_record_by_name, retrieve_record_by_hash
+from Database_management import list_records, retrieve_record_by_name, retrieve_record_by_hash
 from Presidio_helpers import (
     analyze,
     annotate,
     analyzer_engine,
 )    
-from Presidio_OpenAI import OpenAIParams
 from Pinecone_LlamaIndex import getResponse
 from Data_loader import load_data, load_data_de
-from question_generator import generate_questions_pii, evaluation
 
 try:
     st.set_page_config(
@@ -41,6 +39,7 @@ st_logger.setLevel(logging.INFO)
 dotenv.load_dotenv()
 
 database_file = None
+table_name = "bbc_text"
 index_name = "masters-thesis-index"
 
 # MAIN PANNEL
@@ -48,13 +47,13 @@ index_name = "masters-thesis-index"
 col1, col2, col3 = st.columns([1, 1, 2])
 
 # INPUT - COLUMN 1
-db_records = list_records()
+db_records = list_records(table_name)
 st_logger.info("DB records loaded.")
 db_options = [record['file_name'] for record in db_records]
 selected_file = col1.selectbox("Choose a file:", options=db_options, index=None)
 st_logger.info(f"Selected file: {selected_file}")
 if selected_file is not None:
-    database_file = retrieve_record_by_name(selected_file)
+    database_file = retrieve_record_by_name(table_name, selected_file)
     st_logger.info("Record retrieved from database")
 
 # INPUT - COLUMN 2
@@ -70,12 +69,12 @@ if uploaded_file is not None:
     elif file_extension == "txt":
         text_with_pii = file_bytes.decode("utf-8")  # Decode bytes to string for TXT file
     file_hash = hashlib.sha256(text_with_pii.encode("utf-8")).hexdigest()  # Compute hash from string
-    if retrieve_record_by_hash(file_hash) is not None:
-        database_file = retrieve_record_by_hash(file_hash)
+    if retrieve_record_by_hash(table_name, file_hash) is not None:
+        database_file = retrieve_record_by_hash(table_name, file_hash)
     elif language == "de":
-        database_file = load_data_de(text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), index_name, st_logger)
+        database_file = load_data_de(table_name, index_name, text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), st_logger)
     else:        
-        database_file = load_data(text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), index_name, st_logger)
+        database_file = load_data(table_name, index_name, text_with_pii, uploaded_file.name, file_hash, uploaded_file.read(), st_logger)
 
 # INPUT - COLUMN 3
 with col3:
@@ -94,12 +93,12 @@ with col3:
             st_logger.info(f"Selected language: {language}")  # Log the selected language
             file_bytes = text_with_pii.encode("utf-8")  # Convert the text to bytes
             file_hash = hashlib.sha256(file_bytes).hexdigest()  # Compute hash from bytes
-            if retrieve_record_by_hash(file_hash) is not None:
-                database_file = retrieve_record_by_hash(file_hash)
+            if retrieve_record_by_hash(table_name, file_hash) is not None:
+                database_file = retrieve_record_by_hash(table_name, file_hash)
             elif language == "de":
-                database_file = load_data_de(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger)
+                database_file = load_data_de(table_name, index_name, text_with_pii, user_file_name, file_hash, file_bytes, st_logger)
             else:
-                database_file = load_data(text_with_pii, user_file_name, file_hash, file_bytes, index_name, st_logger)
+                database_file = load_data(table_name, index_name, text_with_pii, user_file_name, file_hash, file_bytes, st_logger)
 
 # PII FINDINGS 
 
@@ -156,7 +155,7 @@ if database_file is not None:
 
     col4.text_area(
         label="Text transformed through differential privacy method",
-        value=database_file['text_pii_dp_prompt'],
+        value=database_file['text_pii_dp'],
         height=400,
         label_visibility="visible"
     )
@@ -224,7 +223,7 @@ if st.button("Get Answer"):
             label="Response based on the text with PII transformed with differential private method", 
             value=response_dp, 
             height=200, 
-            key="text_pii_dp_prompt",
+            key="text_pii_dp",
             label_visibility="visible" # visible, hidden, collapsed
         )
 
