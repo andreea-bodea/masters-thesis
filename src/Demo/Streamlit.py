@@ -9,17 +9,17 @@ import streamlit as st
 import json
 import asyncio
 from presidio_analyzer import RecognizerResult
-from PDF_reader import convert_pdf_to_text
+from Demo.PDF_reader import convert_pdf_to_text
 
 from annotated_text import annotated_text
-from Database_management import list_records, retrieve_record_by_name, retrieve_record_by_hash
-from Presidio_helpers import (
+from Data.Database_management import list_records, retrieve_record_by_name, retrieve_record_by_hash
+from Presidio.Presidio_helpers import (
     analyze,
     annotate,
     analyzer_engine,
 )    
-from Pinecone_LlamaIndex import getResponse
-from Data_loader import load_data, load_data_de
+from RAG.Pinecone_LlamaIndex import getResponse
+from Dataset_preprocessing.Data_loader import load_data, load_data_de
 
 try:
     st.set_page_config(
@@ -39,7 +39,7 @@ st_logger.setLevel(logging.INFO)
 dotenv.load_dotenv()
 
 database_file = None
-table_name = "bbc_text"
+table_name = "bbc_text2"
 index_name = "masters-thesis-index"
 
 # MAIN PANNEL

@@ -1,5 +1,5 @@
 import pandas as pd 
-from Pinecone_LlamaIndex import getResponse
+from RAG.Pinecone_LlamaIndex import getResponse
 
 def generate_questions_basic(details, st_analyze_results):
     questions = []

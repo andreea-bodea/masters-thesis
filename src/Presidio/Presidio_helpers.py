@@ -12,12 +12,12 @@ from presidio_analyzer import (
 from presidio_analyzer.nlp_engine import NlpEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
-from Presidio_OpenAI import (
+from Presidio.Presidio_OpenAI import (
     call_completion_model,
     OpenAIParams,
     create_prompt,
 )
-from Presidio_NLP_engine import (
+from Presidio.Presidio_NLP_engine import (
     create_nlp_engine_with_spacy,
     create_nlp_engine_with_flair
 )

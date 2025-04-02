@@ -1,5 +1,5 @@
 # Import the functions from Pinecone_LlamaIndex
-from Pinecone_LlamaIndex import loadDataPinecone, getResponse
+from RAG.Pinecone_LlamaIndex import loadDataPinecone, getResponse
 
 # Test loadDataPinecone function
 def test_loadDataPinecone():

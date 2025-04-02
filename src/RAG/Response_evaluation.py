@@ -1,7 +1,7 @@
 import logging
-from Pinecone_LlamaIndex import getResponse
-from Database_management import retrieve_record_by_name, insert_responses, insert_responses_complex, retrieve_responses_by_name_and_question
-from Presidio_helpers import analyze, analyzer_engine
+from RAG.Pinecone_LlamaIndex import getResponse
+from Data.Database_management import retrieve_record_by_name, insert_responses, insert_responses_complex, retrieve_responses_by_name_and_question
+from Presidio.Presidio_helpers import analyze, analyzer_engine
 from rouge_score import rouge_scorer
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import pandas as pd
@@ -86,7 +86,7 @@ def get_all_responses_enron():
 
     for i in range(11, 61): # FOR EACH DATABASE FILE (e.g (1, 6) -> "Enron_1" to "Enron_5")
         file_name = f"Enron_{i}"
-        database_file = retrieve_record_by_name("enron_text", file_name)
+        database_file = retrieve_record_by_name("enron_text2", file_name)
       
         for question in questions: # FOR EACH QUESTION: UTILITY & PRIVACY (UNTARGETED ATTACK)
             response_with_pii, nodes_response_with_pii, evaluation_with_pii = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])
@@ -113,7 +113,7 @@ def get_all_responses_bbc():
 
     for i in range(1, 11): # FOR EACH DATABASE FILE (e.g (1, 6) -> "Enron_1" to "Enron_5")
         file_name = f"BBC_{i}"
-        database_file = retrieve_record_by_name("bbc_text", file_name)
+        database_file = retrieve_record_by_name("bbc_text2", file_name)
       
         for question in questions: # FOR EACH QUESTION: UTILITY & PRIVACY (UNTARGETED ATTACK)
             response_with_pii, nodes_response_with_pii, evaluation_with_pii = getResponse(index_name, question, [database_file['file_hash'], "text_with_pii"])

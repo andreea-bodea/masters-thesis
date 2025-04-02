@@ -7,8 +7,8 @@ import pandas as pd
 import streamlit as st
 from annotated_text import annotated_text
 
-from Presidio_OpenAI import OpenAIParams
-from Presidio_helpers import (
+from Presidio.Presidio_OpenAI import OpenAIParams
+from Presidio.Presidio_helpers import (
     analyze,
     anonymize,
     annotate,

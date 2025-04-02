@@ -1,6 +1,6 @@
 from DPMLM.DPMLM import DPMLM
 from Diffractor.Diffractor import Lists, Diffractor
-from LLMDP import DPPrompt
+from PrivFill.LLMDP import DPPrompt
 import nltk
 from nltk.data import find
 
@@ -19,8 +19,8 @@ def diff_privacy_dp_prompt(text_with_pii, epsilon):
     for sentence in sentences:
         print(sentence)
     dpprompt = DPPrompt(model_checkpoint="google/flan-t5-large")
-    text_pii_dp_prompt = dpprompt.privatize_dp(sentences, epsilon=epsilon)
-    return ' '.join(text_pii_dp_prompt)
+    text_pii_dp_dp_prompt = dpprompt.privatize_dp(sentences, epsilon=epsilon)
+    return ' '.join(text_pii_dp_dp_prompt)
 
 def diff_privacy_diffractor(text_with_pii, epsilon):
     try:
@@ -51,8 +51,8 @@ if __name__ == "__main__":
 
     # text = "This is a sample text containing sensitive information like a phone number 123-456-7890."
     # text = "David"
-    text = "Arthur Hailey: King of the bestsellers Novelist Arthur Hailey, who has died at the age of 84, was known for his bestselling page-turners exploring the inner workings of various industries, from the hotels to high finance. Born in Luton, Bedfordshire, on 5 April 1920, Hailey was the only child of working class parents, They could not afford to keep him in school beyond the age of 14. He served as a pilot with the Royal Air Force during World War II, flying fighter planes to the Middle East. It was an occupation that was later to feature in his authorial debut, the television screenplay Flight into Danger. Hailey emigrated to Canada in 1947, where he eventually became a citizen. He wanted to be a writer from an early age, but did not take it up professionally until his mid-thirties, when he was inspired to write his first screenplay while on a return flight to Toronto."
-    # text = "Ireland 19-13 England Ireland consigned England to their third straight Six Nations defeat with a stirring victory at Lansdowne Road. A second-half try from captain Brian O'Driscoll and 14 points from Ronan O'Gara kept Ireland on track for their first Grand Slam since 1948. England scored first through Martin Corry but had tries from Mark Cueto and Josh Lewsey disallowed. Andy Robinson's men have now lost nine of their last 14 matches since the 2003 World Cup final. The defeat also heralded England's worst run in the championship since 1987. Ireland last won the title, then the Five Nations, in 1985, but 20 years on they share top spot in the table on maximum points with Wales."
+    # text = "Arthur Hailey: King of the bestsellers Novelist Arthur Hailey, who has died at the age of 84, was known for his bestselling page-turners exploring the inner workings of various industries, from the hotels to high finance. Born in Luton, Bedfordshire, on 5 April 1920, Hailey was the only child of working class parents, They could not afford to keep him in school beyond the age of 14. He served as a pilot with the Royal Air Force during World War II, flying fighter planes to the Middle East. It was an occupation that was later to feature in his authorial debut, the television screenplay Flight into Danger. Hailey emigrated to Canada in 1947, where he eventually became a citizen. He wanted to be a writer from an early age, but did not take it up professionally until his mid-thirties, when he was inspired to write his first screenplay while on a return flight to Toronto."
+    text = "Ireland 19-13 England Ireland consigned England to their third straight Six Nations defeat with a stirring victory at Lansdowne Road. A second-half try from captain Brian O'Driscoll and 14 points from Ronan O'Gara kept Ireland on track for their first Grand Slam since 1948. England scored first through Martin Corry but had tries from Mark Cueto and Josh Lewsey disallowed. Andy Robinson's men have now lost nine of their last 14 matches since the 2003 World Cup final. The defeat also heralded England's worst run in the championship since 1987. Ireland last won the title, then the Five Nations, in 1985, but 20 years on they share top spot in the table on maximum points with Wales."
     
     """
     # Diffractor
