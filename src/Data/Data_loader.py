@@ -4,12 +4,14 @@ import dotenv
 from openai import OpenAI
 import logging
 from presidio_analyzer import RecognizerResult
-from Data.Database_management import insert_record, insert_partial_record, retrieve_record_by_hash
+from Data.Database_management import insert_record, insert_partial_record, add_data
 from Presidio.Presidio_helpers import analyze, anonymize, create_fake_data, analyzer_engine
 from Presidio.Presidio_OpenAI import OpenAIParams
 from RAG.Pinecone_LlamaIndex import loadDataPinecone
 from Differential_privacy.DP import diff_privacy_dp_prompt, diff_privacy_diffractor, diff_privacy_dpmlm
 
+st_logger = logging.getLogger('Data_loader ')
+st_logger.setLevel(logging.INFO)
 dotenv.load_dotenv()
 
 def split_text_into_chunks(text, max_words):
@@ -20,7 +22,7 @@ def split_text_into_chunks(text, max_words):
         chunks.append(chunk) 
     return chunks
 
-def load_data_de(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
+def load_data_de(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini-2024-07-18", 
@@ -145,9 +147,9 @@ def load_data(table_name, index_name, text_with_pii, file_name, file_hash, file_
 
 """
 
-def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
+def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
     
-    st_logger.info(f"Presidio text analysis started on the text: {text_with_pii}")
+    st_logger.info(f"{file_name} - Presidio text analysis started on the text: {text_with_pii}")
     analyzer = analyzer_engine()
     st_analyze_results = analyze(
         text=text_with_pii,
@@ -170,14 +172,14 @@ def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_ha
         operator="redact",
         analyze_results=st_analyze_results,
     )
-    st_logger.info(f"Text with PII deleted: {text_pii_deleted}")
+    st_logger.info(f"{file_name} - Text with PII deleted: {text_pii_deleted}")
 
     text_pii_labeled = anonymize(
         text=text_with_pii,
         operator="replace",
         analyze_results=st_analyze_results,
     )
-    st_logger.info(f"Text with PII labeled: {text_pii_labeled}")
+    st_logger.info(f"{file_name} - Text with PII labeled: {text_pii_labeled}")
 
     open_ai_params = OpenAIParams(
         openai_key=os.getenv("OPENAI_API_KEY"),
@@ -203,9 +205,11 @@ def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_ha
         )
         text_pii_synthetic_list.append(text_chunk_pii_synthetic)
     text_pii_synthetic = ' '.join(text_pii_synthetic_list)
-    st_logger.info(f"Synthetic data created: {text_pii_synthetic}")
+    st_logger.info(f"{file_name} - Synthetic data created: {text_pii_synthetic}")
 
-    st_logger.info(f"Started loading Presidio data into Pinecone: {file_name} {file_hash}")
+    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None, text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None, text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None, details=results_json)
+    st_logger.info(f"Presidio data inserted into the database: {file_name} {file_hash}")
+
     loadDataPinecone(
         index_name=index_name,
         text=text_with_pii,
@@ -234,18 +238,24 @@ def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_ha
         file_hash=file_hash,
         text_type="text_pii_synthetic"
     )
-    st_logger.info(f"Finished loading Presidio data into Pinecone: {file_name} {file_hash}")
-    
-    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None, text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None, text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None, details=results_json)
-    st_logger.info("Presidio data inserted into the database.")
+    st_logger.info(f"Presidio data inserted into Pinecone: {file_name} {file_hash}")
 
-def load_data_diffractor(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
+def load_data_diffractor(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
     text_pii_dp_diffractor1 = diff_privacy_diffractor(text_with_pii, epsilon = 1)
-    st_logger.info(f"text_pii_dp_diffractor1: {text_pii_dp_diffractor1}")    
+    st_logger.info(f"{file_name} - text_pii_dp_diffractor1: {text_pii_dp_diffractor1}")    
     text_pii_dp_diffractor2 = diff_privacy_diffractor(text_with_pii, epsilon = 2)
-    st_logger.info(f"text_pii_dp_diffractor2: {text_pii_dp_diffractor2}")    
+    st_logger.info(f"{file_name} - text_pii_dp_diffractor2: {text_pii_dp_diffractor2}")    
     text_pii_dp_diffractor3 = diff_privacy_diffractor(text_with_pii, epsilon = 3)
-    st_logger.info(f"text_pii_dp_diffractor3: {text_pii_dp_diffractor3}")    
+    st_logger.info(f"{file_name} - text_pii_dp_diffractor3: {text_pii_dp_diffractor3}")    
+    
+    add_data(
+        table_name, 
+        file_hash, 
+        text_pii_dp_diffractor1=text_pii_dp_diffractor1, 
+        text_pii_dp_diffractor2=text_pii_dp_diffractor2, 
+        text_pii_dp_diffractor3=text_pii_dp_diffractor3
+    )
+    st_logger.info(f"Diffractor data inserted into the database: {file_name} {file_hash}")
 
     loadDataPinecone(
         index_name=index_name,
@@ -268,18 +278,24 @@ def load_data_diffractor(table_name, index_name, text_with_pii, file_name, file_
         file_hash=file_hash,
         text_type="text_pii_dp_diffractor3"
     )
-    st_logger.info(f"Finished loading Diffractor data into Pinecone: {file_name} {file_hash}")
+    st_logger.info(f"Diffractor data inserted into the database: {file_name} {file_hash}")
 
-    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii=None, text_pii_deleted=None, text_pii_labeled=None, text_pii_synthetic=None, text_pii_dp_diffractor1=text_pii_dp_diffractor1, text_pii_dp_diffractor2=text_pii_dp_diffractor2, text_pii_dp_diffractor3=text_pii_dp_diffractor3, text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None, text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None, details=None)
-    st_logger.info("Diffractor data inserted into the database.")
-
-def load_data_dp_prompt(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
+def load_data_dp_prompt(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
     text_pii_dp_dp_prompt1 = diff_privacy_dp_prompt(text_with_pii, epsilon = 150)
-    st_logger.info(f"text_pii_dp_dp_prompt1: {text_pii_dp_dp_prompt1}")
+    st_logger.info(f"{file_name} - text_pii_dp_dp_prompt1: {text_pii_dp_dp_prompt1}")
     text_pii_dp_dp_prompt2 = diff_privacy_dp_prompt(text_with_pii, epsilon = 200)
-    st_logger.info(f"text_pii_dp_dp_prompt2: {text_pii_dp_dp_prompt2}")
+    st_logger.info(f"{file_name} - text_pii_dp_dp_prompt2: {text_pii_dp_dp_prompt2}")
     text_pii_dp_dp_prompt3 = diff_privacy_dp_prompt(text_with_pii, epsilon = 250)
-    st_logger.info(f"text_pii_dp_dp_prompt3: {text_pii_dp_dp_prompt3}")
+    st_logger.info(f"{file_name} - text_pii_dp_dp_prompt3: {text_pii_dp_dp_prompt3}")
+
+    add_data(
+        table_name, 
+        file_hash, 
+        text_pii_dp_dp_prompt1=text_pii_dp_dp_prompt1, 
+        text_pii_dp_dp_prompt2=text_pii_dp_dp_prompt2, 
+        text_pii_dp_dp_prompt3=text_pii_dp_dp_prompt3
+    )
+    st_logger.info(f"DP PROMPT data inserted into the database: {file_name} {file_hash}")
 
     loadDataPinecone(
         index_name=index_name,
@@ -302,18 +318,24 @@ def load_data_dp_prompt(table_name, index_name, text_with_pii, file_name, file_h
         file_hash=file_hash,
         text_type="text_pii_dp_dp_prompt3"
     )
-    st_logger.info(f"Finished loading DP PROMPT data into Pinecone: {file_name} {file_hash}")
+    st_logger.info(f"DP PROMPT data inserted into Pinecone: {file_name} {file_hash}")
 
-    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii=None, text_pii_deleted=None, text_pii_labeled=None, text_pii_synthetic=None, text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None, text_pii_dp_dp_prompt1=text_pii_dp_dp_prompt1, text_pii_dp_dp_prompt2=text_pii_dp_dp_prompt2, text_pii_dp_dp_prompt3=text_pii_dp_dp_prompt3, text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None, details=None)
-    st_logger.info("DP PROMPT data inserted into the database.")
-
-def load_data_dpmlm(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
+def load_data_dpmlm(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
     text_pii_dp_dpmlm1 = diff_privacy_dpmlm(text_with_pii, epsilon = 50)
-    st_logger.info(f"text_pii_dp_dpmlm1: {text_pii_dp_dpmlm1}")
+    st_logger.info(f"{file_name} - text_pii_dp_dpmlm1: {text_pii_dp_dpmlm1}")
     text_pii_dp_dpmlm2 = diff_privacy_dpmlm(text_with_pii, epsilon = 75)
-    st_logger.info(f"text_pii_dp_dpmlm2: {text_pii_dp_dpmlm2}")
+    st_logger.info(f"{file_name} - text_pii_dp_dpmlm2: {text_pii_dp_dpmlm2}")
     text_pii_dp_dpmlm3 = diff_privacy_dpmlm(text_with_pii, epsilon = 100)
-    st_logger.info(f"text_pii_dp_dpmlm3: {text_pii_dp_dpmlm3}")
+    st_logger.info(f"{file_name} - text_pii_dp_dpmlm3: {text_pii_dp_dpmlm3}")
+
+    add_data(
+        table_name, 
+        file_hash, 
+        text_pii_dp_dpmlm1=text_pii_dp_dpmlm1, 
+        text_pii_dp_dpmlm2=text_pii_dp_dpmlm2, 
+        text_pii_dp_dpmlm3=text_pii_dp_dpmlm3
+    )
+    st_logger.info(f"DPMLM data inserted into the database: {file_name} {file_hash}")
 
     loadDataPinecone(
         index_name=index_name,
@@ -336,15 +358,12 @@ def load_data_dpmlm(table_name, index_name, text_with_pii, file_name, file_hash,
         file_hash=file_hash,
         text_type="text_pii_dp_dpmlm3"
     )
-    st_logger.info(f"Finished loading DPMLM data into Pinecone: {file_name} {file_hash}")
-
-    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii=None, text_pii_deleted=None, text_pii_labeled=None, text_pii_synthetic=None, text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None, text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None, text_pii_dp_dpmlm1=text_pii_dp_dpmlm1, text_pii_dp_dpmlm2=text_pii_dp_dpmlm2, text_pii_dp_dpmlm3=text_pii_dp_dpmlm3, details=None)
-    st_logger.info("DPMLM data inserted into the database.")
+    st_logger.info(f"DPMLM data inserted into Pinecone: {file_name} {file_hash}")
 
 def load_data_all(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger):
 
-    load_data_presidio(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger)
-    load_data_diffractor(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger)
-    load_data_dp_prompt(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger)
-    load_data_dpmlm(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, st_logger)
+    load_data_presidio(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes)
+    load_data_diffractor(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes)
+    load_data_dp_prompt(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes)
+    load_data_dpmlm(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes)
     st_logger.info("All data inserted into database and Pinecone.")

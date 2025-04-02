@@ -62,7 +62,7 @@ def create_table_responses(table_name):
                     response_pii_dp_dpmlm1 TEXT,
                     response_pii_dp_dpmlm2 TEXT,
                     response_pii_dp_dpmlm3 TEXT,
-                    details TEXT
+                    evaluation JSONB
                 );
             """)
             conn.commit()
@@ -355,6 +355,72 @@ def copy_data_to_existing_table(source_table, target_table, columns):
     finally:
         conn.close()
 
+def add_data(table_name, file_hash, **kwargs):
+    """
+    Update specific columns in an existing record identified by file_hash.
+    
+    Parameters:
+    - table_name: The name of the table
+    - file_hash: The hash used to identify the record
+    - **kwargs: Column names and values to update
+    """
+    try:
+        if not kwargs:
+            print("No columns specified for update")
+            return
+            
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor() as cur:
+            # Construct SET clause for the UPDATE statement
+            set_clause = ", ".join([f"{key} = %s" for key in kwargs.keys()])
+            values = list(kwargs.values())
+            values.append(file_hash)  # Add file_hash for the WHERE clause
+            
+            # Execute the UPDATE statement
+            cur.execute(
+                f"UPDATE {table_name} SET {set_clause} WHERE file_hash = %s",
+                values
+            )
+            rows_updated = cur.rowcount
+            conn.commit()
+            
+            if rows_updated > 0:
+                print(f"Record with file_hash '{file_hash}' updated successfully")
+            else:
+                print(f"No record found with file_hash '{file_hash}'")
+                
+    except Exception as e:
+        print(f"Error updating record: {e}")
+    finally:
+        conn.close()
+
+def update_response_evaluation(table_name, file_name, question, evaluation):
+    """
+    Update the evaluation column for a specific row identified by file_name and question.
+    
+    Parameters:
+    - table_name: The name of the table to update
+    - file_name: The name of the file to identify the row
+    - question: The question to identify the row
+    - evaluation: The new evaluation text to update
+    """
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                UPDATE {table_name}
+                SET evaluation = %s
+                WHERE file_name = %s AND question = %s;
+            """, (evaluation, file_name, question))
+            conn.commit()
+            print(f"Evaluation updated successfully for file: {file_name} and question: {question}")
+    except Exception as e:
+        print(f"Error updating evaluation: {e}")
+    finally:
+        conn.close()
+
+
+
 if __name__ == "__main__":
 
     """
@@ -366,8 +432,8 @@ if __name__ == "__main__":
     create_table_text("bbc_text2")
     copy_data_to_existing_table("bbc_text", "bbc_text2", ["id", "file_name", "file_hash", "pdf_bytes", "text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "text_pii_dp_diffractor1", "text_pii_dp_diffractor2", "text_pii_dp_diffractor3", "details"]) 
 
-    delete_table("bbc_responses")
-    create_table_responses("bbc_responses")
+    create_table_responses("bbc_responses2")
+    create_table_responses("enron_responses2")
 
     add_columns("enron_text", {
         "timestamp_modified": "TIMESTAMP", 

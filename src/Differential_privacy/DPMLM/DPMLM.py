@@ -73,14 +73,20 @@ def sentence_enum(tokens):
     return n
 
 def get_opposites():
-	with open(impresources.files("DPMLM") / "data" / "opposites.json", 'r') as f:
-		opposites = json.load(f)
-	return opposites
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(current_dir, "data", "opposites.json")
+    
+    with open(data_path, 'r') as f:
+        opposites = json.load(f)
+    return opposites
 
 def get_vocab():
-	with open(impresources.files("DPMLM") / "data" / "vocab.txt", 'r') as f:
-		vocab = set([x.strip() for x in f.readlines()])
-	return vocab
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(current_dir, "data", "vocab.txt")
+    
+    with open(data_path, 'r') as f:
+        vocab = set([x.strip() for x in f.readlines()])
+    return vocab
 
 def get_antonyms(word):
     ants = list()
@@ -273,13 +279,9 @@ class DPMLM():
     alpha = None
 
     def __init__(self, MODEL="roberta-base", SPACY="en_core_web_md", alpha=0.003):
-        print("entered DPML initialization")
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL)
-        print("tokenizer initialization done")
         self.lm_model = AutoModelForMaskedLM.from_pretrained(MODEL)
-        print("lm_model initialization done")
         self.raw_model = AutoModel.from_pretrained(MODEL, output_hidden_states=True, output_attentions=True)
-        print("raw_model initialization done")
         self.alpha = alpha
 
         self.clip_min = -3.2093127
@@ -288,8 +290,6 @@ class DPMLM():
 
         # self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
-        # self.device = "cpu"
-        print(f"DPMLM - Device set to use {self.device}")
         self.lm_model = self.lm_model.to(self.device)
         self.raw_model = self.raw_model.to(self.device)
 

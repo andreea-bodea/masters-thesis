@@ -1,26 +1,8 @@
-from DPMLM.DPMLM import DPMLM
-from Diffractor.Diffractor import Lists, Diffractor
-from PrivFill.LLMDP import DPPrompt
+from .DPMLM.DPMLM import DPMLM
+from .Diffractor.Diffractor import Lists, Diffractor
+from .PrivFill.LLMDP import DPPrompt
 import nltk
 from nltk.data import find
-
-def diff_privacy_dpmlm(text_with_pii, epsilon):
-    print("entered fct")
-    dpmlm = DPMLM(MODEL="roberta-base", SPACY="en_core_web_md", alpha=0.003)
-    print("initialization done")
-    text_pii_dpmlm, perturbed, total = dpmlm.dpmlm_rewrite(text_with_pii, epsilon=epsilon)
-    print("Transformed Sentence:", text_pii_dpmlm)
-    print("Perturbed Words:", perturbed)
-    print("Total Words Processed:", total)
-    return text_pii_dpmlm
-
-def diff_privacy_dp_prompt(text_with_pii, epsilon):
-    sentences = nltk.sent_tokenize(text_with_pii)
-    for sentence in sentences:
-        print(sentence)
-    dpprompt = DPPrompt(model_checkpoint="google/flan-t5-large")
-    text_pii_dp_dp_prompt = dpprompt.privatize_dp(sentences, epsilon=epsilon)
-    return ' '.join(text_pii_dp_dp_prompt)
 
 def diff_privacy_diffractor(text_with_pii, epsilon):
     try:
@@ -33,7 +15,7 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
         nltk.download('stopwords')
 
     lists = Lists(
-        home="/Users/andreeabodea/ANDREEA/MT/Code/masters-thesis/src/Diffractor",
+        home="/Users/andreeabodea/ANDREEA/MT/Code/masters-thesis/src/Differential_privacy/Diffractor",
     )
     diff = Diffractor(
         L=lists,
@@ -46,6 +28,46 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
     perturbed_text, num_perturbed, num_diff, total, support, changes = diff.rewrite(text_lower_case)
     diff.cleanup()
     return ' '.join(perturbed_text)
+
+def diff_privacy_dp_prompt(text_with_pii, epsilon):
+    sentences = nltk.sent_tokenize(text_with_pii)
+    dpprompt = DPPrompt(model_checkpoint="google/flan-t5-large")
+    text_pii_dp_dp_prompt = dpprompt.privatize_dp(sentences, epsilon=epsilon)
+    return ' '.join(text_pii_dp_dp_prompt)
+
+def diff_privacy_dpmlm(text_with_pii, epsilon):
+    sentences = nltk.sent_tokenize(text_with_pii)
+    dpmlm = DPMLM()
+    perturbed_sentences = []
+    
+    for sentence in sentences:
+        # If sentence is too long, break it into chunks
+        tokens = nltk.word_tokenize(sentence)
+        if len(tokens) > 75:  # Conservative estimate for RoBERTa's 512 token limit
+            # Process in fixed-size chunks
+            chunk_size = 75
+            chunks = []
+            
+            # Split into chunks
+            for i in range(0, len(tokens), chunk_size):
+                chunk = tokens[i:i + chunk_size]
+                chunks.append(' '.join(chunk))
+            
+            # Process each chunk
+            chunk_results = []
+            for chunk in chunks:
+                perturbed_chunk, perturbed, total = dpmlm.dpmlm_rewrite(chunk, epsilon=epsilon)
+                chunk_results.append(perturbed_chunk)
+            
+            # Join chunk results and append to perturbed_sentences
+            perturbed_sentences.append(' '.join(chunk_results))
+        else:
+            # Process normally if sentence is not too long
+            perturbed_sentence, perturbed, total = dpmlm.dpmlm_rewrite(sentence, epsilon=epsilon)
+            perturbed_sentences.append(perturbed_sentence)
+    
+    text_pii_dpmlm = ' '.join(perturbed_sentences)
+    return text_pii_dpmlm
 
 if __name__ == "__main__":
 
