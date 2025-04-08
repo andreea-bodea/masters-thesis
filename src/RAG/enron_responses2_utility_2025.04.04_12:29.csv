@@ -1,0 +1,13 @@
+Anonymization Type,Average ROUGE-1 Score,Average ROUGE-L Score,Average BLEU Score,Average Cosine Similarity Score,Average Perplexity Score
+response_pii_deleted,0.68,0.51,0.32,0.81,34.03
+response_pii_labeled,0.68,0.51,0.33,0.8,33.44
+response_pii_synthetic,0.59,0.44,0.25,0.71,34.99
+response_pii_dp_diffractor1,0.64,0.45,0.25,0.82,35.96
+response_pii_dp_diffractor2,0.7,0.52,0.33,0.86,34.14
+response_pii_dp_diffractor3,0.74,0.59,0.41,0.89,33.88
+response_pii_dp_dp_prompt1,0.36,0.26,0.11,0.45,41.3
+response_pii_dp_dp_prompt2,0.4,0.27,0.12,0.51,42.51
+response_pii_dp_dp_prompt3,0.42,0.28,0.12,0.56,38.34
+response_pii_dp_dpmlm1,0.53,0.36,0.17,0.7,43.06
+response_pii_dp_dpmlm2,0.56,0.37,0.18,0.74,40.1
+response_pii_dp_dpmlm3,0.56,0.38,0.18,0.74,41.66

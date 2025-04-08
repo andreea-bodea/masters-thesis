@@ -1,5 +1,5 @@
 import logging
-from Data.Database_management import retrieve_responses_by_name_and_question, update_response_evaluation
+from Data.Database_management import retrieve_responses_by_name_and_question, update_response_evaluation, retrieve_record_by_name
 from Presidio.Presidio_helpers import analyze, analyzer_engine
 from Response_generation import get_all_questions
 from rouge_score import rouge_scorer
@@ -8,13 +8,20 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
-import math
 import pandas as pd
+from openai import OpenAI
+import json
+from datetime import datetime
+import dotenv
+import os
+import re
 
 st_logger = logging.getLogger('Response evaluation')
 st_logger.setLevel(logging.INFO)
+dotenv.load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-anonymization_types = ['response_pii_deleted', 'response_pii_labeled', 'response_pii_synthetic', 'response_diffractor', 'response_dp_prompt', 'response_dpmlm']
+anonymization_types = ['response_pii_deleted', 'response_pii_labeled', 'response_pii_synthetic', 'response_pii_dp_diffractor1', 'response_pii_dp_diffractor2', 'response_pii_dp_diffractor3', 'response_pii_dp_dp_prompt1', 'response_pii_dp_dp_prompt2', 'response_pii_dp_dp_prompt3', 'response_pii_dp_dpmlm1', 'response_pii_dp_dpmlm2', 'response_pii_dp_dpmlm3']
 questions = get_all_questions()
 question_utility = questions[0]
 question_untargeted_attack = questions[1]
@@ -23,27 +30,27 @@ def calculate_rouge1(reference, hypothesis):
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
     scores = scorer.score(reference, hypothesis)
     rouge1_fmeasure = scores['rouge1'].fmeasure
-    return rouge1_fmeasure
+    return round(float(rouge1_fmeasure), 8)
 
 def calculate_rougeL(reference, hypothesis):
     scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True) # ['rouge1', 'rouge2', 'rougeL']
     scores = scorer.score(reference, hypothesis)
     rougeL_fmeasure = scores['rougeL'].fmeasure
-    return rougeL_fmeasure
+    return round(float(rougeL_fmeasure), 8)
 
 def calculate_bleu(reference, hypothesis):
     reference_tokens = [reference.split()]
     hypothesis_tokens = hypothesis.split()
     smoothing_function = SmoothingFunction().method1
     bleu_score = sentence_bleu(reference_tokens, hypothesis_tokens, smoothing_function=smoothing_function)
-    return bleu_score
+    return round(float(bleu_score), 8)
 
 def calculate_cosine_similarity(reference, hypothesis):
     model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     ref_embedding = model.encode([reference])
     hyp_embedding = model.encode([hypothesis])
     cosine_sim = cosine_similarity(ref_embedding, hyp_embedding)
-    return cosine_sim[0][0]
+    return round(float(cosine_sim[0][0]), 8)
 
 def calculate_perplexity(text):
     # Load the GPT-2 model and tokenizer
@@ -52,7 +59,7 @@ def calculate_perplexity(text):
     model = GPT2LMHeadModel.from_pretrained(model_name)
     model.eval()
 
-    encodings = tokenizer(text, return_tensors='pt', truncation=True, max_length=model.config.n_positions)
+    encodings = tokenizer(text, return_tensors='pt')
     max_length = model.config.n_positions
     stride = 512  # adjust based on GPU/memory constraints
     nlls = []
@@ -76,14 +83,15 @@ def calculate_perplexity(text):
     # Sum losses and divide by total tokens to get average loss per token
     total_nll = torch.stack(nlls).sum()
     ppl = torch.exp(total_nll / seq_len)
-    return ppl.item()
+    return round(float(ppl.item()), 8)
 
-def calculate_reduction_in_pii():
-    for response_type in response_types:
-        st_logger.info(f"Presidio text analysis started on the text: {response_type}")
+"""
+def calculate_reduction_in_pii(response_with_pii, response_without_pii):
+    for response_type in anonymization_types:
+        st_logger.info(f"Presidio text analysis started on: {response_type}")
         analyzer = analyzer_engine()
         st_analyze_results = analyze(
-            text=database_file[response_type],
+            text=response_without_pii,
             language="en",
             score_threshold=0.5,
             allow_list=[],
@@ -101,20 +109,163 @@ def calculate_reduction_in_pii():
                 original - anonymized for original, anonymized in zip(pii_in_response['response_with_pii'], pii_in_response[response_type])
             ]
             print(f"Reduction in PII for {response_type}: {reduction_in_pii[response_type]}")
+"""
 
-def evaluate(table_name, file_name, type):
-    database_file = retrieve_responses_by_name_and_question(table_name, file_name, question_utility)  
+def calculate_pii_leakage(original_pii_list, detected_pii_list):
+    # Convert lists to sets for unique values and to perform set operations
+    original_set = set(original_pii_list)
+    detected_set = set(detected_pii_list)
+    
+    # Compute intersection: the PII items leaked in the response
+    pii_leaked = original_set.intersection(detected_set)
+    
+    # Calculate leakage count and percentage
+    pii_leaked_nr = len(pii_leaked)
+    pii_original_nr = len(original_set)
+    leakage_percentage = (pii_leaked_nr / pii_original_nr) * 100 if pii_original_nr > 0 else 0
+    
+    return pii_leaked, pii_leaked_nr, leakage_percentage
+
+def calculate_privacy_llm_judge(original_text, answer_based_on_anonymized_text):
+    if not original_text or not answer_based_on_anonymized_text:
+        st_logger.warning("Missing input text for privacy evaluation")
+        return {
+            "privacy_leakage_score": None,
+            "names": None, 
+            "contact_info": None,
+            "dates": None,
+            "locations": None,
+            "others": None,
+            "explanation": "Missing input text"
+        }
+
+    prompt = f"""You are given two texts. 
+Your task is to assess whether any private or sensitive information from the first text appears in the second text.
+This includes names, email addresses, phone numbers, physical addresses, dates, locations, organizations, and any other details that can be used to identify an individual or entity.
+Your output must be in JSON format, following the structure provided below. To compute a final privacy leakage score, do the following:
+    
+Step 1: Entity Extraction from the First Text -> Identify and categorize all private or sensitive entities in the original text. The categories are: "names", "contact_info", "dates", "locations" and "others". 
+Examples for the "contact_info" category are email addresses and phone numbers and for the "others" category organziations.
+
+Step 2: Entity Extraction from the Second Text -> Identify and categorize all private or sensitive entities in the second text based on the same categories.
+Include any placeholders, redacted tokens, or patterns that were intended to replace the original sensitive information.
+
+Step 3: Comparison and Analysis -> Compare the entities from the first text with those found in the second text. 
+Identify any exact matches, partial matches, or recognizable patterns indicating that sensitive information from the first text is present in the second text.
+    
+Step 4: Scoring Assessment -> Assign a privacy leakage score from 0 to 100 for each category of private information, where 0 indicates no leakage and 100 indicates that all private or sensitive information in the second text comes from the first text. 
+If there are no entities in one of the categories, just return None for that category and do not take that category into account. Then, based on the categories where entities have been found, compute an overall privacy leakage score by averaging the category privacy leakage scores.
+
+Step 5: Final JSON Report -> Return a final JSON report containing the overall leakage score and the scores for each category. If no entities have been found for that category just return None as the score for that category.
+
+The output JSON should have the following format: 
+- "privacy_leakage_score": a number between 0 and 100 representing the overall leakage, computed as the average of the leakage scores for the 5 categories "names", "contact_info", "dates", "locations", and "others"
+- "names": a number between 0 and 100 representing the percentage of the names in the second text that come from the first text
+- "contact_info": a number between 0 and 100 representing the percentage of the contact information (e.g. phone numbers, email addresses) in the second text that come from the first text
+- "dates": a number between 0 and 100 representing the percentage of the dates in the second text that come from the first text
+- "locations": a number between 0 and 100 representing the percentage of the locations in the second text that come from the first text
+- "others": a number between 0 and 100 representing the percentage of the private information that cannot be categorized as names, locations or contact information in the second text that come from the first text
+- "explanation": a string explaining and interpreting your final privacy leakage score
+Please ensure that your final answer strictly adheres to the JSON format above, without any additional commentary or text.
+
+First text:
+{original_text}
+
+Second text:
+{answer_based_on_anonymized_text}
+        
+Example:
+First text: "Toni Morrison is a famous novelist and editor, born and raised in Lorain, Ohio. She graduated from Howard University in 1953. For more information about her please email toni.morrison@gmail.com."
+Second text: "The text contains the following private information:
+- name: Alice Munroe
+- location: Zurich, Switzerland
+- organziation: Howard University
+- email addresse: daniel.schopf@gmail.de.
+No dates or phone numbers have been identified."
+
+Expected response:
+{{
+    "privacy_leakage_score": 25,
+    "names": 0, 
+    "contact_info": 0,
+    "dates": None,
+    "locations": 0,
+    "others": 100,
+    "explanation": "Only the organization has been leaked, the entities in the categories 'names', 'contact_info', and 'location' are different. Moreover, no information about dates is provided in the second text. Therefore the privacy score is computed as (0+0+0+100)/4=25."
+}}
+"""
+
+    try:
+        client = OpenAI(api_key=openai_api_key)
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            # model="o3-mini", 
+            # reasoning_effort="medium",
+            messages=[
+                {"role": "system", "content": "You are an expert in privacy and data anonymization."},
+                {"role": "user", "content": prompt}
+            ],
+            )
+    except Exception as e:
+        st_logger.error(f"API call failed: {e}")
+        return {
+            "privacy_leakage_score": None,
+            "names": None, 
+            "contact_info": None,
+            "dates": None,
+            "locations": None,
+            "others": None,
+            "explanation": f"API call failed: {str(e)}"
+        }
+
+    output_text = completion.choices[0].message.content
+    try:
+        result = json.loads(output_text)
+        expected_keys = ["privacy_leakage_score", "names", "contact_info", "dates", "locations", "others", "explanation"]
+        for key in expected_keys:
+            if key not in result:
+                st_logger.warning(f"Missing key in LLM response: {key}")
+                result[key] = None
+    except json.JSONDecodeError as e:
+        st_logger.error(f"Failed to parse JSON response: {e}")
+        return {
+            "privacy_leakage_score": None,
+            "names": None, 
+            "contact_info": None,
+            "dates": None,
+            "locations": None,
+            "others": None,
+            "explanation": f"Failed to parse JSON: {output_text}"
+        }
+    return result
+
+def evaluate(text_table_name, responses_table_name, file_name, type):
+    original_text = retrieve_record_by_name(text_table_name, file_name)['text_with_pii']
+    # st_logger.info(f"original_text: {original_text}")
+    if type == "utility":
+        database_file = retrieve_responses_by_name_and_question(responses_table_name, file_name, question_utility)
+        # st_logger.info(f"question_utility: {question_utility}")
+    elif type == "privacy":
+        database_file = retrieve_responses_by_name_and_question(responses_table_name, file_name, question_untargeted_attack)
+        # st_logger.info(f"question_untargeted_attack: {question_untargeted_attack}")
+        # st_logger.info(f"database_file: {database_file}")
     if database_file is None:
-        st_logger.error(f"No data found for file: {file_name} and provided question.")
+        st_logger.info(f"No data found for file: {file_name} and provided question.")
     else: 
         scores = {}
         if type == "utility":
             for anonymization_type in anonymization_types:
+                st_logger.info(f"Utility evaluation scores for {file_name} {anonymization_type}")
                 rouge_score1 = calculate_rouge1(database_file['response_with_pii'], database_file[anonymization_type])
+                st_logger.info(f"rouge_score1: {rouge_score1}")
                 rouge_scoreL = calculate_rougeL(database_file['response_with_pii'], database_file[anonymization_type])
+                st_logger.info(f"rouge_scoreL: {rouge_scoreL}")
                 bleu_score = calculate_bleu(database_file['response_with_pii'], database_file[anonymization_type])
+                st_logger.info(f"bleu_score: {bleu_score}")
                 cosine_sim = calculate_cosine_similarity(database_file['response_with_pii'], database_file[anonymization_type])
+                st_logger.info(f"cosine_sim: {cosine_sim}")
                 perplexity = calculate_perplexity(database_file[anonymization_type])
+                st_logger.info(f"perplexity: {perplexity}")
                 scores[anonymization_type] = {
                     'rouge_score1': rouge_score1,
                     'rouge_scoreL': rouge_scoreL,
@@ -122,98 +273,173 @@ def evaluate(table_name, file_name, type):
                     'cosine_similarity': cosine_sim,
                     'perplexity': perplexity
                 }
-            st_logger.error(f"Utility evaluation scores for {file_name}: {scores}")
-            update_response_evaluation(table_name=table_name, file_name=file_name, question=question_utility, evaluation=scores)
+            # st_logger.info(f"Utility evaluation scores for {file_name}: {scores}")
+            scores_json = json.dumps(scores)
+            update_response_evaluation(table_name=responses_table_name, file_name=file_name, question=question_utility, evaluation=scores_json)
+       
         elif type == "privacy":
             for anonymization_type in anonymization_types:
-                # Placeholder for privacy evaluation logic
-                pass
-            st_logger.error(f"Privacy evaluation scores for {file_name}: {scores}")
-            update_response_evaluation(table_name=table_name, file_name=file_name, question=question_untargeted_attack, evaluation=scores)
+                st_logger.info(f"Privacy evaluation scores for {file_name} {anonymization_type}")
 
-def evaluate_all(table_name, file_name_pattern, type, last): 
-    for i in range(1, last+1):  # FOR EACH DATABASE FILE
+                """
+                # Calculate PII leakage
+                pii_leaked, pii_leaked_count, pii_leakage_percent = calculate_pii_leakage(
+                    database_file['response_with_pii'], 
+                    database_file[anonymization_type]
+                )
+                st_logger.info(f"PII leakage: {pii_leaked_count} items, {pii_leakage_percent}%")
+                """
+                
+                # Calculate privacy leakage score using LLM
+                llm_privacy_scores = calculate_privacy_llm_judge(
+                    original_text, 
+                    database_file[anonymization_type]
+                )
+                st_logger.info(f"Privacy LLM scores: {llm_privacy_scores}")
+
+                scores[anonymization_type] = {
+                    # 'pii_leakage': {
+                    #     'leaked_items': list(pii_leaked) if isinstance(pii_leaked, set) else pii_leaked,
+                    #     'leaked_count': pii_leaked_count,
+                    #     'leaked_percent': pii_leakage_percent
+                    # },
+                    'privacy_llm_judge': llm_privacy_scores
+                }
+            st_logger.info(f"Privacy evaluation scores for {file_name}: {scores}")
+            scores_json = json.dumps(scores)
+            update_response_evaluation(table_name=responses_table_name, file_name=file_name, question=question_untargeted_attack, evaluation=scores_json)
+
+def evaluate_all(text_table_name, responses_table_name, file_name_pattern, type, first, last): 
+    for i in range(first, last+1):  # FOR EACH DATABASE FILE
+        if responses_table_name == "enron_responses2" and i == 61: continue
         file_name = file_name_pattern.format(i)
         if type == "utility":
-            evaluate(table_name, file_name, type="utility")
+            evaluate(text_table_name, responses_table_name, file_name, type="utility")
         elif type == "privacy":
-            evaluate(table_name, file_name, type="privacy")
+            evaluate(text_table_name, responses_table_name, file_name, type="privacy")
 
-def average_utility(table_name, file_name_pattern, last):
+def average_utility(responses_table_name, file_name_pattern, last):
     rouge1_scores = {key: [] for key in anonymization_types}
     rougeL_scores = {key: [] for key in anonymization_types}
     bleu_scores = {key: [] for key in anonymization_types}
-    cosine_sim_scores = {key: [] for key in anonymization_types}
+    cosine_similarity_scores = {key: [] for key in anonymization_types}
     perplexity_scores = {key: [] for key in anonymization_types}
 
     for i in range(1, last+1):  # FOR EACH DATABASE FILE
+        # if i == 61: continue
         file_name = file_name_pattern.format(i)
-        database_file = retrieve_responses_by_name_and_question(table_name, file_name, question_utility)  
+        database_file = retrieve_responses_by_name_and_question(responses_table_name, file_name, question_utility)  
         if database_file and 'evaluation' in database_file:
             evaluation = database_file['evaluation']
             for anonymization_type in anonymization_types:
-                if anonymization_type in evaluation:
-                    rouge1_scores[anonymization_type].append(evaluation[anonymization_type]['rouge_score1'])
-                    rougeL_scores[anonymization_type].append(evaluation[anonymization_type]['rouge_scoreL'])
-                    bleu_scores[anonymization_type].append(evaluation[anonymization_type]['bleu_score'])
-                    cosine_sim_scores[anonymization_type].append(evaluation[anonymization_type]['cosine_similarity'])
-                    perplexity_scores[anonymization_type].append(evaluation[anonymization_type]['perplexity'])
+                rouge1_scores[anonymization_type].append(evaluation[anonymization_type]['rouge_score1'])
+                rougeL_scores[anonymization_type].append(evaluation[anonymization_type]['rouge_scoreL'])
+                bleu_scores[anonymization_type].append(evaluation[anonymization_type]['bleu_score'])
+                cosine_similarity_scores[anonymization_type].append(evaluation[anonymization_type]['cosine_similarity'])
+                perplexity_scores[anonymization_type].append(evaluation[anonymization_type]['perplexity'])
+            """
+            print(f"{file_name} rouge1_scores {rouge1_scores}")
+            print(f"{file_name} rougeL_scores {rougeL_scores}")
+            print(f"{file_name} bleu_scores {bleu_scores}")
+            print(f"{file_name} cosine_similarity_scores {cosine_similarity_scores}")
+            print(f"{file_name} perplexity_scores {perplexity_scores}"
+            """
 
-    final_rouge1_score = {key: sum(scores) / len(scores) for key, scores in rouge1_scores.items() if scores}
-    final_rougeL_score = {key: sum(scores) / len(scores) for key, scores in rougeL_scores.items() if scores}
-    final_bleu_score = {key: sum(scores) / len(scores) for key, scores in bleu_scores.items() if scores}
-    final_cosine_sim_score = {key: sum(scores) / len(scores) for key, scores in cosine_sim_scores.items() if scores}
-    final_perplexity_score = {key: sum(scores) / len(scores) for key, scores in perplexity_scores.items() if scores}
+    final_rouge1_score = {key: round(sum(scores) / len(scores), 2) for key, scores in rouge1_scores.items() if scores}
+    final_rougeL_score = {key: round(sum(scores) / len(scores), 2) for key, scores in rougeL_scores.items() if scores}
+    final_bleu_score = {key: round(sum(scores) / len(scores), 2) for key, scores in bleu_scores.items() if scores}
+    final_cosine_similarity_score = {key: round(sum(scores) / len(scores), 2) for key, scores in cosine_similarity_scores.items() if scores}
+    final_perplexity_score = {key: round(sum(scores) / len(scores), 2) for key, scores in perplexity_scores.items() if scores}
 
+    """
     for anonymization_type in anonymization_types:
         print(f"Final average ROUGE-1 score for {anonymization_type}: {final_rouge1_score.get(anonymization_type, 'No scores available')}")
         print(f"Final average ROUGE-L score for {anonymization_type}: {final_rougeL_score.get(anonymization_type, 'No scores available')}")
         print(f"Final average BLEU score for {anonymization_type}: {final_bleu_score.get(anonymization_type, 'No scores available')}")
-        print(f"Final average Cosine Similarity score for {anonymization_type}: {final_cosine_sim_score.get(anonymization_type, 'No scores available')}")
+        print(f"Final average Cosine Similarity score for {anonymization_type}: {final_cosine_similarity_score.get(anonymization_type, 'No scores available')}")
         print(f"Final average Perplexity score for {anonymization_type}: {final_perplexity_score.get(anonymization_type, 'No scores available')}")
+    """
 
     scores_df = pd.DataFrame({
         'Anonymization Type': anonymization_types,
         'Average ROUGE-1 Score': [final_rouge1_score.get(at, 'No scores available') for at in anonymization_types],
         'Average ROUGE-L Score': [final_rougeL_score.get(at, 'No scores available') for at in anonymization_types],
         'Average BLEU Score': [final_bleu_score.get(at, 'No scores available') for at in anonymization_types],
-        'Average Cosine Similarity Score': [final_cosine_sim_score.get(at, 'No scores available') for at in anonymization_types],
+        'Average Cosine Similarity Score': [final_cosine_similarity_score.get(at, 'No scores available') for at in anonymization_types],
         'Average Perplexity Score': [final_perplexity_score.get(at, 'No scores available') for at in anonymization_types]
     })
     print(scores_df)
-    return scores_df
+    current_datetime = datetime.now().strftime("%Y.%m.%d_%H:%M")
+    file_name = f"{responses_table_name}_utility_{current_datetime}.csv"
+    scores_df.to_csv(file_name, index=False)
 
-def average_privacy(table_name, file_name_pattern, last):
-    untargeted_attack_scores = {key: [] for key in anonymization_types}
+def extract_llm_score(entry):
+    """
+    Extracts the privacy_leakage_score from an entry.
+    If the score is None, it checks the explanation for a fallback value.
+    """
+    judge = entry.get("privacy_llm_judge", {})
+    score = judge.get("privacy_leakage_score")
+    
+    # If score is available (and not None), return it as a float.
+    if score is not None:
+        return float(score)
+    
+    # If score is None, check the explanation text.
+    explanation = judge.get("explanation", "")
+    if "failed to parse json" in explanation.lower() and "privacy_leakage_score" in explanation:
+        # Look for a numeric value after "privacy_leakage_score"
+        match = re.search(r'"privacy_leakage_score"\s*:\s*([\d\.]+)', explanation)
+        if match:
+            return float(match.group(1))
+    return 0
+
+def average_privacy(responses_table_name, file_name_pattern, last):
+    llm_scores = {key: [] for key in anonymization_types}
 
     for i in range(1, last+1):  # FOR EACH DATABASE FILE
         file_name = file_name_pattern.format(i)
-        database_file = retrieve_responses_by_name_and_question(table_name, file_name, question_untargeted_attack)  
+        # if i == 61: continue
+        database_file = retrieve_responses_by_name_and_question(responses_table_name, file_name, question_untargeted_attack)  
         if database_file and 'evaluation' in database_file:
             evaluation = database_file['evaluation']
             for anonymization_type in anonymization_types:
                 if anonymization_type in evaluation:
-                    untargeted_attack_scores[anonymization_type].append(evaluation[anonymization_type]['untargeted_attack_scores'])
-
-    final_reduction_in_pii_score = {response_type: sum(reductions) / len(reductions) if reductions else 0
-                         for response_type, reductions in reduction_in_pii.items()}
+                    llm_scores[anonymization_type].append(extract_llm_score(evaluation[anonymization_type]))
+                
+    final_llm_score = {anonymization_type: round(sum(scores) / len(scores)) if scores else 0
+                     for anonymization_type, scores in llm_scores.items()}
     
-    for anonymization_type in anonymization_types:
-        print(f"Final average reduction in pii for {anonymization_type}: {final_reduction_in_pii_score.get(anonymization_type, 'No scores available')}")
-
     scores_df = pd.DataFrame({
         'Anonymization Type': anonymization_types,
-        'Average Reduction in PII': [final_reduction_in_pii_score.get(at, 'No scores available') for at in anonymization_types],
+        'LLM Score': [final_llm_score.get(at, 'No scores available') for at in anonymization_types],
         })
     print(scores_df)
     return scores_df
 
 if __name__ == "__main__":
-    evaluate_all(table_name="enron_responses2", file_name_pattern="Enron_{}", type="utility", last=100)
-    evaluate_all(table_name="enron_responses2", file_name_pattern="Enron_{}", type="privacy", last=100)
 
-    evaluate_all(table_name="bbc_responses2", file_name_pattern="BBC_{}", type="utility", last=200)
-    evaluate_all(table_name="bbc_responses2", file_name_pattern="BBC_{}", type="privacy", last=200)
+    # UTILITY 
+    # evaluate_all(text_table_name="enron_text2", responses_table_name="enron_responses2", file_name_pattern="Enron_{}", type="utility", first=1, last=99)
+    # evaluate_all(text_table_name="bbc_text2", responses_table_name=="bbc_responses2", file_name_pattern="BBC_{}", type="utility", first=1, last=200)
 
-    average_utility(table_name="enron_responses2", file_name_pattern="Enron_{}", first=1, last=60)
-    average_utility(table_name="bbc_responses2", file_name_pattern="BBC_{}", first=1, last=200)
+    # PRIVACY 
+    # evaluate_all(text_table_name="enron_text2", responses_table_name="enron_responses2", file_name_pattern="Enron_{}", type="privacy", first=2, last=99)
+    # evaluate_all(text_table_name="bbc_text2", responses_table_name="bbc_responses2", file_name_pattern="BBC_{}", type="privacy", first=1, last=200)
+
+    # AVERAGE 
+    # average_utility(responses_table_name="enron_responses2", file_name_pattern="Enron_{}", last=99)
+    # average_utility(responses_table_name="bbc_responses2", file_name_pattern="BBC_{}", last=200)
+    
+    # average_privacy(responses_table_name="enron_responses2", file_name_pattern="Enron_{}", last=99)
+    average_privacy(responses_table_name="bbc_responses2", file_name_pattern="BBC_{}", last=200)
+
+
+    """
+    original_text = "Andreea is born in Munich."
+    answer_based_on_anonymized_text = "Bodea is born in Munich."
+    
+    evaluation = calculate_privacy_llm_judge(original_text, answer_based_on_anonymized_text)
+    print("Evaluation Result:")
+    print(json.dumps(evaluation, indent=2))
+    """
