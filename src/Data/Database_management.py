@@ -84,6 +84,18 @@ def delete_table(table_name):
     finally:
         conn.close()
 
+def export_table_to_csv(table_name, csv_file_path):
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor() as cur:
+            with open(csv_file_path, 'w', encoding='utf-8') as f:
+                cur.copy_expert(f"COPY {table_name} TO STDOUT WITH CSV HEADER", f)
+        print(f"Table '{table_name}' exported to '{csv_file_path}' successfully.")
+    except Exception as e:
+        print(f"Error exporting table '{table_name}': {e}")
+    finally:
+        conn.close()
+
 def add_columns(table_name, columns_dict):
     """
     Add one or more columns to an existing table.
@@ -264,13 +276,13 @@ def insert_partial_record(table_name, file_name, file_hash, pdf_bytes, text_with
     finally:
         conn.close()
 
-def insert_responses(table_name, file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, details):
+def insert_responses(table_name, file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, evaluation):
     try:
         conn = psycopg2.connect(DATABASE_URL)
         with conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO {table_name} (file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, details) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, details)
+                f"INSERT INTO {table_name} (file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, evaluation) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (file_name, question, response_with_pii, response_pii_deleted, response_pii_labeled, response_pii_synthetic, response_pii_dp_diffractor1, response_pii_dp_diffractor2, response_pii_dp_diffractor3, response_pii_dp_dp_prompt1, response_pii_dp_dp_prompt2, response_pii_dp_dp_prompt3, response_pii_dp_dpmlm1, response_pii_dp_dpmlm2, response_pii_dp_dpmlm3, evaluation)
             )
             conn.commit()
             print(f"Response inserted into '{table_name}' successfully")
@@ -402,7 +414,7 @@ def update_response_evaluation(table_name, file_name, question, evaluation):
     - table_name: The name of the table to update
     - file_name: The name of the file to identify the row
     - question: The question to identify the row
-    - evaluation: The new evaluation text to update
+    - evaluation: The JSON string to be stored in the evaluation column
     """
     try:
         conn = psycopg2.connect(DATABASE_URL)
@@ -419,16 +431,17 @@ def update_response_evaluation(table_name, file_name, question, evaluation):
     finally:
         conn.close()
 
-
-
 if __name__ == "__main__":
 
+
     """
-    delete_table("enron_text2")
+
+    create_table_responses("bbc_responses2")
+    create_table_responses("enron_responses2")
     create_table_text("enron_text2")
+
     copy_data_to_existing_table("enron_text", "enron_text2", ["id", "file_name", "file_hash", "pdf_bytes", "text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "details"])
 
-    delete_table("bbc_text2")
     create_table_text("bbc_text2")
     copy_data_to_existing_table("bbc_text", "bbc_text2", ["id", "file_name", "file_hash", "pdf_bytes", "text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "text_pii_dp_diffractor1", "text_pii_dp_diffractor2", "text_pii_dp_diffractor3", "details"]) 
 
@@ -450,13 +463,7 @@ if __name__ == "__main__":
     
     drop_columns("enron_text", {
         "timestamp_modified": "TIMESTAMP"
-    })
-    
-    create_table_text("enron_text")
-    create_table_text("bbc_text")
-    
-    create_table_responses("enron_responses")
-    create_table_responses("bbc_responses")
+    })   
 
     database_file = retrieve_record_by_name('enron_text', 'Enron_25')
     print(database_file['text_with_pii'])
@@ -484,5 +491,13 @@ if __name__ == "__main__":
             text_pii_dp_new = ast.literal_eval(text_pii_dp)[0]
             # print(f"Text with PII NEW: {text_pii_dp_new}")
             update_text_pii_dp('enron_text', file_name, text_pii_dp_new)
+    
+    
+    export_table_to_csv("enron_text2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_text2.csv")
+    export_table_to_csv("bbc_text2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_text2.csv")
+
     """
+
+    export_table_to_csv("enron_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_responses2.csv")
+    export_table_to_csv("bbc_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_responses2.csv")
 
