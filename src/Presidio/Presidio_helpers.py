@@ -28,10 +28,8 @@ logger = logging.getLogger("presidio-streamlit")
 def nlp_engine_and_registry() -> Tuple[NlpEngine, RecognizerRegistry]:
     """Create the NLP Engine instance based on the requested model."""
 
-    # "spacy"
-    # return create_nlp_engine_with_spacy()
-    # "flair" in model_family.lower():
-    return create_nlp_engine_with_flair()
+    return create_nlp_engine_with_spacy()   # "spacy"
+    # return create_nlp_engine_with_flair()   # "flair"
 
     """Create the NLP Engine instance using spaCy."""
     """

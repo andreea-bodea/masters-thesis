@@ -40,7 +40,7 @@ dotenv.load_dotenv()
 
 database_file = None
 table_name = "bbc_text2"
-index_name = "masters-thesis-index"
+index_name = "bbc2"
 
 # MAIN PANNEL
 
@@ -313,3 +313,4 @@ if st.button("Get Answer"):
         # Display the evaluation results as a table
         st.subheader("Evaluation Results")
         st.dataframe(evaluation_df)
+

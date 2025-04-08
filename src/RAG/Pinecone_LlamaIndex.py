@@ -30,6 +30,8 @@ from deepeval.integrations.llama_index import (
 from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric, ContextualRelevancyMetric, ContextualPrecisionMetric, ContextualRecallMetric
 from deepeval.test_case import LLMTestCase
 
+from Data.Database_management import retrieve_record_by_name
+
 logging.basicConfig(level=logging.INFO)
 
 # Load environment variables
@@ -46,6 +48,8 @@ llm = OpenAI(
     max_new_tokens=500,
     temperature=0.0,
 )
+
+
 
 openai.api_request_timeout = 30  # Set timeout to 60 seconds
 
@@ -89,7 +93,7 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
             ExactMatchFilter(key="text_type", value=filters[1])
         ]
     )
-    similarity_top_k = 2
+    similarity_top_k = 4
     query_engine = index.as_query_engine(llm=llm, streaming=False, similarity_top_k=similarity_top_k, filters=metadata_filters)
     response = query_engine.query(question)
 
@@ -116,7 +120,7 @@ def evaluate_response(question, response):
     for name, evaluator in evaluators.items():
         eval_result = evaluator.evaluate_response(query=question, response=response)
         evaluation_result[name] = eval_result.score
-    """
+    
 
     test_case = LLMTestCase(
         input=question,
@@ -137,3 +141,35 @@ def evaluate_response(question, response):
     for name, metric in evaluators.items():
         metric.measure(test_case)
         evaluation_result[name] = metric.score
+
+    """
+
+def load_all(table_name, index_name, file_name_pattern, start, last):
+        text_types = ["text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "text_pii_dp_diffractor1", "text_pii_dp_diffractor2", "text_pii_dp_diffractor3", "text_pii_dp_dp_prompt1", "text_pii_dp_dp_prompt2", "text_pii_dp_dp_prompt3", "text_pii_dp_dpmlm1", "text_pii_dp_dpmlm2", "text_pii_dp_dpmlm3"]
+        for i in range(start, last+1):  # FOR EACH DATABASE FILE
+            #if i == 61: continue  
+            file_name = file_name_pattern.format(i)
+            database_file = retrieve_record_by_name(table_name, file_name)
+            for text_type in text_types:
+                loadDataPinecone(
+                    index_name=index_name,
+                    text=database_file[text_type],
+                    file_name=file_name,
+                    file_hash=database_file['file_hash'],
+                    text_type=text_type
+                )
+                print(f"Loaded embeddings for: {file_name} {text_type}")
+
+if __name__ == "__main__":
+    #load_all(table_name="enron_text2", index_name="enron2", file_name_pattern="Enron_{}", start=71, last=99)
+    load_all(table_name="bbc_text2", index_name="bbc2", file_name_pattern="BBC_{}", start=1, last=200)
+
+    """ 
+    question_privacy = "Please analyze the following text for any private or sensitive information, like personally identifiable information (PII). For the purpose of this analysis, private information includes — but is not limited to — names, email addresses, phone numbers, physical addresses, dates, locations, organizations, or any other details that could be used to identify an individual or entity."       
+    file_name = "BBC_1"
+    database_file = retrieve_record_by_name("bbc_text2", file_name)
+    response, nodes, evaluation = getResponse(index_name="bbc2", question=question_privacy, filters=[database_file['file_hash'], "text_pii_dp_dp_prompt3"])
+    print(f"response: {response}")
+    print(f"nodes: {nodes}")    
+    print(f"evaluation: {evaluation}")
+    """
