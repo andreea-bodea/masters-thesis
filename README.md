@@ -19,7 +19,9 @@ This is the code repository for the paper: "A Survey of Privacy Issues and Priva
 
 ## Demo: GuardRAG
 
-A Streamlit-based demo is available to visualize and compare the results of different privacy-preserving techniques applied to the text from the 2 datasets (Enron and BBC) and the responses of the RAG system for the two questions used to evaluate the system.
+A Streamlit-based demo is available to visualize and compare:
+- the results of different privacy-preserving techniques applied to the text from 2 datasets (Enron and BBC)
+- the responses of the RAG system for two questions used to evaluate the responses's utility and privacy leakage
 
 ### Installation
 
@@ -30,13 +32,18 @@ A Streamlit-based demo is available to visualize and compare the results of diff
    ```
 
 2. Install the required dependencies:
-   ```bash
-   pip install -e .
-   # or alternatively:
-   pip install -r requirements.txt
-   ```
+   - For demo only (minimal installation):
+     ```bash
+     pip install streamlit pandas plotly annotated-text natsort
+     ```
+   - For full experiments (including all anonymization methods and evaluations):
+     ```bash
+     pip install -e .
+     # or alternatively:
+     pip install -r requirements.txt
+     ```
 
-3. Set up environment variables (optional for demo):
+3. Set up environment variables (not needed for demo):
    - To run only the demo, no environment variables are required as the demo uses the CSV files with the results
    - If you want to run the full experiments, create a `.env` file with the following:
    ```
@@ -93,7 +100,7 @@ guardrag/
     │   ├── DP.py
     │   ├── DPMLM/         # DP-MLM implementation
     │   ├── Diffractor/    # Diffractor implementation
-    │   └── PrivFill/      # Synthetic data generation
+    │   └── PrivFill/      # DP-Prompt implementation
     ├── Presidio/          # PII detection and anonymization
     │   ├── Presidio_NLP_engine.py
     │   ├── Presidio_OpenAI.py
@@ -110,7 +117,7 @@ guardrag/
 
 The experiments were conducted using two datasets:
 - **BBC Dataset**: News articles containing various forms of PII
-- **Enron Dataset**: Email communications containing various forms of PII
+- **Enron Dataset**: Emails containing various forms of PII
 
 Preprocessing steps:
 - Data cleaning and extraction of relevant information
@@ -123,7 +130,7 @@ A PostgreSQL database was created to store:
 - Original texts with PII
 - Anonymized versions of the texts using different methods
 - RAG system responses for different questions
-- Evaluation metrics for responses
+- Evaluation results for responses
 
 The database schema includes:
 - Tables for storing text data with columns for different anonymization methods
