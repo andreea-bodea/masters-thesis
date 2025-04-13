@@ -113,31 +113,36 @@ guardrag/
 
 ## Experiment Methodology
 
-### 1. Dataset Selection and Preprocessing
+<details>
+<summary><h3>1. Dataset Selection and Preprocessing</h3></summary>
 
 The experiments were conducted using two datasets:
 - **BBC Dataset**: News articles containing various forms of PII
-- **Enron Dataset**: Emails containing various forms of PII
+- **Enron Dataset**: Email communications containing various forms of PII
 
 Preprocessing steps:
 - Data cleaning and extraction of relevant information
 - Preprocessing notebooks: `src/Data/PrivFill_BBC_preprocessing.ipynb` and `src/Data/PrivFill_Enron_preprocessing.ipynb`
 - The cleaned datasets were saved as CSV files for further processing
+</details>
 
-### 2. Database Creation
+<details>
+<summary><h3>2. Database Creation</h3></summary>
 
 A PostgreSQL database was created to store:
 - Original texts with PII
 - Anonymized versions of the texts using different methods
 - RAG system responses for different questions
-- Evaluation results for responses
+- Evaluation metrics for responses
 
 The database schema includes:
 - Tables for storing text data with columns for different anonymization methods
 - Tables for storing responses to queries based on different anonymized versions
 - Evaluation metrics for measuring privacy and utility
+</details>
 
-### 3. Implementation of Anonymization Methods
+<details>
+<summary><h3>3. Implementation of Anonymization Methods</h3></summary>
 
 Several anonymization methods were implemented:
 
@@ -150,23 +155,29 @@ Several anonymization methods were implemented:
    - **Diffractor**: Implementation with various epsilon values (1, 2, 3)
    - **DP-Prompt**: Implementation with various epsilon values (150, 200, 250)
    - **DP-MLM**: Implementation with various epsilon values (50, 75, 100)
+</details>
 
-### 4. RAG and Vector Database Creation
+<details>
+<summary><h3>4. RAG and Vector Database Creation</h3></summary>
 
 Setup of the RAG system:
 - Created vector embeddings for each text (original and anonymized versions)
 - Used Pinecone as the vector database
 - Integrated with LlamaIndex for efficient retrieval
+</details>
 
-### 5. Data Loading
+<details>
+<summary><h3>5. Data Loading</h3></summary>
 
 The data loading process:
 - Loading original texts and analyzing them for PII using Presidio
 - Applying different anonymization methods to the texts
 - Storing both the original and anonymized versions in the database
 - Indexing all versions in the vector database for retrieval
+</details>
 
-### 6. Response Generation
+<details>
+<summary><h3>6. Response Generation</h3></summary>
 
 Response generation methodology:
 - Two types of questions were used:
@@ -174,8 +185,10 @@ Response generation methodology:
   2. Privacy question: Asking for private or sensitive information in the text
 - Generated responses using both original and anonymized texts
 - Stored all responses in the database for evaluation
+</details>
 
-### 7. Response Evaluation
+<details>
+<summary><h3>7. Response Evaluation</h3></summary>
 
 Evaluation metrics used:
 - **Utility Metrics**:
@@ -188,3 +201,4 @@ Evaluation metrics used:
   - LLM-based privacy judge (GPT-4o-mini) that calculates privacy leakage scores
   - Entity-based comparison (names, contact info, dates, locations, etc.)
   - Overall privacy leakage score
+</details>
