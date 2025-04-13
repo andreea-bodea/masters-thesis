@@ -81,10 +81,10 @@ The demo allows you to:
 *Screenshot 1: Dataset selection and text anonymization comparison*
 
 ![Anonymization Methods](src/Demo/Demo2.png)
-*Screenshot 2: Different anonymization methods applied to the same text*
+*Screenshot 2: Utility Experiment - Prompt and RAG responses*
 
 ![Response Comparison](src/Demo/Demo3.png)
-*Screenshot 3: Comparing responses from original and anonymized texts and evaluating them
+*Screenshot 3: Privacy Experiment - Prompt and RAG responses AND Evaluation*
 
 ## Project Structure
 
