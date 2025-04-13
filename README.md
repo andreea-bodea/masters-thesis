@@ -75,6 +75,19 @@ The demo allows you to:
 - Compare RAG responses generated from both original and anonymized texts
 - Evaluate the effectiveness of privacy mechanisms using various metrics
 
+### Screenshots
+
+Here are some screenshots of the GuardRAG demo in action:
+
+![Dataset Selection](Demo/Demo1.png)
+*Screenshot 1: Dataset selection and text anonymization comparison*
+
+![Anonymization Methods](Demo/Demo2.png)
+*Screenshot 2: Different anonymization methods applied to the same text*
+
+![Response Comparison](Demo/Demo3.png)
+*Screenshot 3: Comparing responses from original and anonymized texts*
+
 ## Project Structure
 
 ```
