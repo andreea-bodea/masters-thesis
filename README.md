@@ -77,16 +77,14 @@ The demo allows you to:
 
 ### Screenshots
 
-Here are some screenshots of the GuardRAG demo in action:
-
 ![Dataset Selection](src/Demo/Demo1.png)
 *Screenshot 1: Dataset selection and text anonymization comparison*
 
-![Anonymization Methods](src.Demo/Demo2.png)
+![Anonymization Methods](src/Demo/Demo2.png)
 *Screenshot 2: Different anonymization methods applied to the same text*
 
 ![Response Comparison](src/Demo/Demo3.png)
-*Screenshot 3: Comparing responses from original and anonymized texts*
+*Screenshot 3: Comparing responses from original and anonymized texts and evaluating them
 
 ## Project Structure
 
