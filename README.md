@@ -92,6 +92,7 @@ Here are some screenshots of the GuardRAG demo in action:
 
 ```
 guardrag/
+├── Systematic Literature Review.pdf                   # Notes for all the papers in the SLR
 ├── .env                   # Environment variables configuration
 ├── pyproject.toml         # Project dependencies and metadata
 ├── requirements.txt       # Project dependencies
