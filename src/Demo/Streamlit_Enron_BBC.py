@@ -5,6 +5,7 @@ import streamlit as st
 import pandas as pd
 import json
 from natsort import natsorted
+import plotly.express as px
 from presidio_analyzer import RecognizerResult
 from annotated_text import annotated_text
 from Presidio.Presidio_helpers import (
@@ -204,24 +205,61 @@ col2.text_area(
 
 ### Evaluation ###
 
-print(response_row_utility['evaluation'])
-
 utility_eval = json.loads(response_row_utility['evaluation'])
 privacy_eval = json.loads(response_row_privacy['evaluation'])
 
-rouge1_score = utility_eval[response_type_map[selected_anonymization]]['rouge_score1']
-rougeL_score = utility_eval[response_type_map[selected_anonymization]]['rouge_scoreL']
-bleu_score = utility_eval[response_type_map[selected_anonymization]]['bleu_score']
-cosine_similarity_score = utility_eval[response_type_map[selected_anonymization]]['cosine_similarity']
-perplexity_score = utility_eval[response_type_map[selected_anonymization]]['perplexity']
-
+rouge1_score = round(utility_eval[response_type_map[selected_anonymization]]['rouge_score1'], 2)
+rougeL_score = round(utility_eval[response_type_map[selected_anonymization]]['rouge_scoreL'], 2)
+bleu_score = round(utility_eval[response_type_map[selected_anonymization]]['bleu_score'], 2)
+cosine_similarity_score = round(utility_eval[response_type_map[selected_anonymization]]['cosine_similarity'], 2)
+perplexity_score = round(utility_eval[response_type_map[selected_anonymization]]['perplexity'], 2)
 llm_score = extract_llm_score(privacy_eval)
 
 evaluation_df = pd.DataFrame({
-    'Metric': ['Rouge-1', 'Rouge-L', 'BLEU', 'Cosine Similarity', 'Perplexity', 'LLM-as-a-Judge'],
-    'Score': [rouge1_score, rougeL_score, bleu_score, cosine_similarity_score, perplexity_score, llm_score]
-}, index=[0, 1, 2, 3, 4, 5])
+    "Metric": [
+        "Rouge-1", "Rouge-L", "BLEU", "Cosine Similarity", "Perplexity", "LLM-as-a-Judge"
+    ],
+    "Score": [
+        rouge1_score, rougeL_score, bleu_score,
+        cosine_similarity_score, perplexity_score, llm_score
+    ],
+    "Explanation": [
+        "Overlap of unigrams (recall-focused)",
+        "Longest common subsequence (sequence similarity)",
+        "N-gram precision of generated vs reference",
+        "Semantic closeness of embeddings",
+        "How predictable the text is (lower = better)",
+        "LLM-based judgment on percentage of privacy leakage"
+    ]
+})
 
-st.subheader(f"🔐 Evaluation of the response based on the text after {selected_anonymization}")
-st.dataframe(evaluation_df)
+# Normalize metrics where higher = better
+normalized_scores = []
 
+for metric, score in zip(evaluation_df["Metric"], evaluation_df["Score"]):
+    if metric == "Perplexity":
+        normalized = 1 / score if score > 0 else 0
+    elif metric == "LLM-as-a-Judge":
+        normalized = 1 - (score / 100)
+    else:
+        normalized = score  # assumed in 0-1 range
+    normalized_scores.append(normalized)
+
+# Scale to [0, 1] range based on max
+evaluation_df["Normalized"] = normalized_scores
+evaluation_df["Normalized"] /= max(normalized_scores)
+
+col1.subheader(f"📊 Evaluation of the response based on the text after {selected_anonymization}")
+col1.dataframe(evaluation_df)
+
+bar_fig = px.bar(
+    evaluation_df,
+    x="Metric",
+    y="Normalized",
+    hover_data=["Explanation", "Score"],
+    color="Metric",
+    title="",
+    labels={"Normalized": "Normalized Score (0–1)"},
+)
+col2.subheader(f"📊 Barchart for Normalized Evaluation Metrics")
+col2.plotly_chart(bar_fig, use_container_width=True)

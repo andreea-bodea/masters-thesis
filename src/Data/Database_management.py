@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 import os
-import ast
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -93,53 +92,6 @@ def export_table_to_csv(table_name, csv_file_path):
         print(f"Table '{table_name}' exported to '{csv_file_path}' successfully.")
     except Exception as e:
         print(f"Error exporting table '{table_name}': {e}")
-    finally:
-        conn.close()
-
-def add_columns(table_name, columns_dict):
-    """
-    Add one or more columns to an existing table.
-    
-    Parameters:
-    - table_name: The name of the table to modify
-    - columns_dict: A dictionary where keys are column names and values are column types
-                   Example: {"new_column": "TEXT", "another_column": "INTEGER"}
-    """
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            for column_name, column_type in columns_dict.items():
-                cur.execute(f"""
-                    ALTER TABLE {table_name} 
-                    ADD COLUMN IF NOT EXISTS {column_name} {column_type};
-                """)
-            conn.commit()
-            print(f"Added columns to table '{table_name}' successfully")
-    except Exception as e:
-        print(f"Error adding columns to table: {e}")
-    finally:
-        conn.close()
-
-def drop_columns(table_name, columns_list):
-    """
-    Delete one or more columns from an existing table.
-    
-    Parameters:
-    - table_name: The name of the table to modify
-    - columns_dict: A list with all the column names
-    """
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            for column_name in columns_list:
-                cur.execute(f"""
-                    ALTER TABLE {table_name}
-                    DROP COLUMN IF EXISTS {column_name};
-                """)
-            conn.commit()
-            print(f"Columns '{columns_list}' from table '{table_name}' dropped successfully")
-    except Exception as e:
-        print(f"Error dropping column: {e}")
     finally:
         conn.close()
     
@@ -313,60 +265,6 @@ def retrieve_responses_by_name_and_question(table_name, file_name, question):
     finally:
         conn.close()
 
-def update_text_pii_dp(table_name, file_name, new_text_pii_dp):
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE {table_name} SET text_pii_dp = %s WHERE file_name = %s",
-                (new_text_pii_dp, file_name)
-            )
-            conn.commit()
-            print(f"Record with file_name '{file_name}' updated successfully")
-    except Exception as e:
-        print(f"Error updating text_pii_dp: {e}")
-    finally:
-        conn.close()
-
-def update_text_pii_synthetic(table_name, file_name, new_text_pii_synthetic):
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE {table_name} SET text_pii_synthetic = %s WHERE file_name = %s",
-                (new_text_pii_synthetic, file_name)
-            )
-            conn.commit()
-            print(f"Record with file_name '{file_name}' updated successfully")
-    except Exception as e:
-        print(f"Error updating text_pii_dp: {e}")
-    finally:
-        conn.close()
-
-def copy_data_to_existing_table(source_table, target_table, columns):
-    """
-    Copy data from specified columns in a source table to the same columns in an existing target table.
-    
-    Parameters:
-    - source_table: The name of the table to copy data from
-    - target_table: The name of the existing table to insert data into
-    - columns: A list of column names to copy
-    """
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            cur.execute(f"""
-                INSERT INTO {target_table} ({', '.join(columns)})
-                SELECT {', '.join(columns)} FROM {source_table};
-            """)
-            
-            conn.commit()
-            print(f"Copied data from columns {columns} in '{source_table}' to '{target_table}' successfully")
-    except Exception as e:
-        print(f"Error copying data: {e}")
-    finally:
-        conn.close()
-
 def add_data(table_name, file_hash, **kwargs):
     """
     Update specific columns in an existing record identified by file_hash.
@@ -432,72 +330,13 @@ def update_response_evaluation(table_name, file_name, question, evaluation):
         conn.close()
 
 if __name__ == "__main__":
-
-
     """
-
-    create_table_responses("bbc_responses2")
-    create_table_responses("enron_responses2")
     create_table_text("enron_text2")
-
-    copy_data_to_existing_table("enron_text", "enron_text2", ["id", "file_name", "file_hash", "pdf_bytes", "text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "details"])
-
     create_table_text("bbc_text2")
-    copy_data_to_existing_table("bbc_text", "bbc_text2", ["id", "file_name", "file_hash", "pdf_bytes", "text_with_pii", "text_pii_deleted", "text_pii_labeled", "text_pii_synthetic", "text_pii_dp_diffractor1", "text_pii_dp_diffractor2", "text_pii_dp_diffractor3", "details"]) 
-
-    create_table_responses("bbc_responses2")
     create_table_responses("enron_responses2")
-
-    add_columns("enron_text", {
-        "timestamp_modified": "TIMESTAMP", 
-        "text_pii_dp_diffractor1": "TEXT",
-        "text_pii_dp_diffractor2": "TEXT",
-        "text_pii_dp_diffractor3": "TEXT",
-        "text_pii_dp_dp_prompt1": "TEXT",
-        "text_pii_dp_dp_prompt2": "TEXT",
-        "text_pii_dp_dp_prompt3": "TEXT",
-        "text_pii_dp_dpmlm1": "TEXT",
-        "text_pii_dp_dpmlm2": "TEXT",
-        "text_pii_dp_dpmlm3": "TEXT",
-    })
-    
-    drop_columns("enron_text", {
-        "timestamp_modified": "TIMESTAMP"
-    })   
-
-    database_file = retrieve_record_by_name('enron_text', 'Enron_25')
-    print(database_file['text_with_pii'])
-    print()
-    print(database_file['text_pii_deleted'])
-    print()
-    print(database_file['text_pii_labeled'])
-    print()
-    print(database_file['text_pii_synthetic'])   
-    print() 
-    print(database_file['text_pii_dp'])
-    """
-    
-    """
-    # UPDATE text_pii_synthetic 
-    ### Enron_61 does NOT exist because it was a duplicate email
-    #for nr in range(1, 61):
-    for nr in range(62, 92): 
-        file_name = f"Enron_{nr}"
-        database_file = retrieve_record_by_name('enron_text', file_name)
-        text_pii_dp = database_file['text_pii_dp']
-        # print(f"File Name: {file_name}")
-        # print(f"Text OLD: {text_pii_dp}")
-        if text_pii_dp.startswith('[') and text_pii_dp.endswith(']'):
-            text_pii_dp_new = ast.literal_eval(text_pii_dp)[0]
-            # print(f"Text with PII NEW: {text_pii_dp_new}")
-            update_text_pii_dp('enron_text', file_name, text_pii_dp_new)
-    
-    
+    create_table_responses("bbc_responses2")
     export_table_to_csv("enron_text2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_text2.csv")
     export_table_to_csv("bbc_text2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_text2.csv")
-
-    """
-
     export_table_to_csv("enron_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_responses2.csv")
     export_table_to_csv("bbc_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_responses2.csv")
-
+    """

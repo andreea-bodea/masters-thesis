@@ -1,2 +1,183 @@
-# masters-thesis
-Privacy Issues and Privacy-preserving Mechanisms in Retrieval-Augmented Generation Systems
+# GuardRAG
+
+This is the code repository for the paper: "A Survey of Privacy Issues and Privacy-preserving Mechanisms in Retrieval-Augmented Generation Systems"
+
+## Table of Contents
+- [Demo: GuardRAG](#demo-guardrag)
+  - [Installation](#installation)
+  - [Running the Demo](#running-the-demo)
+  - [Demo Features](#demo-features)
+- [Project Structure](#project-structure)
+- [Experiment Methodology](#experiment-methodology)
+  - [1. Dataset Selection and Preprocessing](#1-dataset-selection-and-preprocessing)
+  - [2. Database Creation](#2-database-creation)
+  - [3. Implementation of Anonymization Methods](#3-implementation-of-anonymization-methods)
+  - [4. RAG and Vector Database Creation](#4-rag-and-vector-database-creation)
+  - [5. Data Loading](#5-data-loading)
+  - [6. Response Generation](#6-response-generation)
+  - [7. Response Evaluation](#7-response-evaluation)
+
+## Demo: GuardRAG
+
+A Streamlit-based demo is available to visualize and compare the results of different privacy-preserving techniques applied to the text from the 2 datasets (Enron and BBC) and the responses of the RAG system for the two questions used to evaluate the system.
+
+### Installation
+
+1. Clone this repository:
+   ```bash
+   git clone <repository-url>
+   cd guardrag
+   ```
+
+2. Install the required dependencies:
+   ```bash
+   pip install -e .
+   # or alternatively:
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables (optional for demo):
+   - To run only the demo, no environment variables are required as the demo uses the CSV files with the results
+   - If you want to run the full experiments, create a `.env` file with the following:
+   ```
+   DATABASE_URL=your_postgres_database_url
+   OPENAI_API_KEY=your_openai_api_key
+   PINECONE_API_KEY=your_pinecone_api_key
+   PINECONE_ENVIRONMENT=your_pinecone_environment
+   ```
+
+### Running the Demo
+
+1. Run the Streamlit application:
+   ```bash
+   cd src/Demo
+   streamlit run Streamlit_Enron_BBC.py
+   ```
+
+### Demo Features
+
+The demo allows you to:
+- Select between BBC and Enron datasets
+- View original texts alongside versions processed with different anonymization techniques:
+  - PII Deletion 
+  - PII Labeling
+  - PII Replacement with Synthetic Data
+  - Diffractor (with different epsilon values)
+  - DP-Prompt (with different epsilon values)
+  - DP-MLM (with different epsilon values)
+- Compare RAG responses generated from both original and anonymized texts
+- Evaluate the effectiveness of privacy mechanisms using various metrics
+
+## Project Structure
+
+```
+guardrag/
+├── .env                   # Environment variables configuration
+├── pyproject.toml         # Project dependencies and metadata
+├── requirements.txt       # Project dependencies
+├── README.md             
+└── src/                   # Source code
+    ├── Data/              # Data loading and database management
+    │   ├── CSV_loader.py
+    │   ├── Data_loader.py 
+    │   ├── Database_management.py
+    │   ├── PrivFill_BBC_preprocessing.ipynb
+    │   └── PrivFill_Enron_preprocessing.ipynb
+    ├── Demo/              # Streamlit demo application
+    │   ├── Streamlit_Enron_BBC.py
+    │   ├── bbc_responses2.csv
+    │   ├── bbc_text2.csv
+    │   ├── enron_responses2.csv
+    │   └── enron_text2.csv
+    ├── Differential_privacy/  # Differential privacy methods
+    │   ├── DP.py
+    │   ├── DPMLM/         # DP-MLM implementation
+    │   ├── Diffractor/    # Diffractor implementation
+    │   └── PrivFill/      # Synthetic data generation
+    ├── Presidio/          # PII detection and anonymization
+    │   ├── Presidio_NLP_engine.py
+    │   ├── Presidio_OpenAI.py
+    │   └── Presidio_helpers.py
+    └── RAG/               # Retrieval-augmented generation
+        ├── Pinecone_LlamaIndex.py
+        ├── Response_evaluation.py
+        └── Response_generation.py
+```
+
+## Experiment Methodology
+
+### 1. Dataset Selection and Preprocessing
+
+The experiments were conducted using two datasets:
+- **BBC Dataset**: News articles containing various forms of PII
+- **Enron Dataset**: Email communications containing various forms of PII
+
+Preprocessing steps:
+- Data cleaning and extraction of relevant information
+- Preprocessing notebooks: `src/Data/PrivFill_BBC_preprocessing.ipynb` and `src/Data/PrivFill_Enron_preprocessing.ipynb`
+- The cleaned datasets were saved as CSV files for further processing
+
+### 2. Database Creation
+
+A PostgreSQL database was created to store:
+- Original texts with PII
+- Anonymized versions of the texts using different methods
+- RAG system responses for different questions
+- Evaluation metrics for responses
+
+The database schema includes:
+- Tables for storing text data with columns for different anonymization methods
+- Tables for storing responses to queries based on different anonymized versions
+- Evaluation metrics for measuring privacy and utility
+
+### 3. Implementation of Anonymization Methods
+
+Several anonymization methods were implemented:
+
+1. **PII Detection and Anonymization** (using Microsoft Presidio):
+   - **PII Deletion**: Completely removing identified PII
+   - **PII Labeling**: Replacing PII with generic labels (e.g., [PERSON])
+   - **PII Replacement with Synthetic Data**: Replacing PII with synthetic but realistic data
+
+2. **Differential Privacy Methods**:
+   - **Diffractor**: Implementation with various epsilon values (1, 2, 3)
+   - **DP-Prompt**: Implementation with various epsilon values (150, 200, 250)
+   - **DP-MLM**: Implementation with various epsilon values (50, 75, 100)
+
+### 4. RAG and Vector Database Creation
+
+Setup of the RAG system:
+- Created vector embeddings for each text (original and anonymized versions)
+- Used Pinecone as the vector database
+- Integrated with LlamaIndex for efficient retrieval
+
+### 5. Data Loading
+
+The data loading process:
+- Loading original texts and analyzing them for PII using Presidio
+- Applying different anonymization methods to the texts
+- Storing both the original and anonymized versions in the database
+- Indexing all versions in the vector database for retrieval
+
+### 6. Response Generation
+
+Response generation methodology:
+- Two types of questions were used:
+  1. Utility question: Asking for a factual summary of the text
+  2. Privacy question: Asking for private or sensitive information in the text
+- Generated responses using both original and anonymized texts
+- Stored all responses in the database for evaluation
+
+### 7. Response Evaluation
+
+Evaluation metrics used:
+- **Utility Metrics**:
+  - ROUGE-1 & ROUGE-L scores
+  - BLEU score
+  - Cosine similarity
+  - Perplexity
+  
+- **Privacy Metrics**:
+  - LLM-based privacy judge (GPT-4o-mini) that calculates privacy leakage scores
+  - Entity-based comparison (names, contact info, dates, locations, etc.)
+  - Overall privacy leakage score
