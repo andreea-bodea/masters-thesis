@@ -27,7 +27,7 @@ def load(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes
     return database_file
              
 def load_enron(type):
-    file_path = "/Users/andreeabodea/ANDREEA/MT/Data/Enron_preprocessed.csv"
+    file_path = "./Enron_preprocessed.csv"
     index_name = "enron2"
     table_name = "enron_text2"
 
@@ -44,7 +44,7 @@ def load_enron(type):
             load(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes, type=type)
 
 def load_bbc(type):
-    file_path = "/Users/andreeabodea/ANDREEA/MT/Data/BBC_preprocessed.csv"
+    file_path = "./BBC_preprocessed.csv"
     index_name = "bbc2"
     table_name = "bbc_text2"
 

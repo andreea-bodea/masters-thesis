@@ -335,8 +335,8 @@ if __name__ == "__main__":
     create_table_text("bbc_text2")
     create_table_responses("enron_responses2")
     create_table_responses("bbc_responses2")
-    export_table_to_csv("enron_text2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_text2.csv")
-    export_table_to_csv("bbc_text2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_text2.csv")
-    export_table_to_csv("enron_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/enron_responses2.csv")
-    export_table_to_csv("bbc_responses2", "/Users/andreeabodea/ANDREEA/MT/Data/bbc_responses2.csv")
+    export_table_to_csv("enron_text2", "./enron_text2.csv")
+    export_table_to_csv("bbc_text2", "/./bbc_text2.csv")
+    export_table_to_csv("enron_responses2", "/./enron_responses2.csv")
+    export_table_to_csv("bbc_responses2", "/./bbc_responses2.csv")
     """

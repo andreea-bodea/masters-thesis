@@ -15,7 +15,7 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
         nltk.download('stopwords')
 
     lists = Lists(
-        home="/Users/andreeabodea/ANDREEA/MT/Code/masters-thesis/src/Differential_privacy/Diffractor",
+        home="./src/Differential_privacy/Diffractor",
     )
     diff = Diffractor(
         L=lists,
