@@ -90,6 +90,8 @@ The demo allows you to:
 
 ```
 guardrag/
+├── White_Literature.md                   # List with all the titles and links of the papers
+├── Grey_Literature.md                    # List with all the titles and link of the websites and videos
 ├── Systematic Literature Review.pdf                   # Notes for all the papers in the SLR
 ├── .env                   # Environment variables configuration
 ├── pyproject.toml         # Project dependencies and metadata
@@ -133,28 +135,17 @@ The experiments were conducted using two datasets:
 - **Enron Dataset**: Email communications containing various forms of PII
 
 Preprocessing steps:
-- Data cleaning and extraction of relevant information
-- Preprocessing notebooks: `src/Data/PrivFill_BBC_preprocessing.ipynb` and `src/Data/PrivFill_Enron_preprocessing.ipynb`
+- Filtering of too long documents
+- Sorting of documents in decreasing order of the number of PII detected in the text using Microsoft Presidio
 - The cleaned datasets were saved as CSV files for further processing
+
+Relevant files:
+- `src/Data/PrivFill_BBC_preprocessing.ipynb`
+- `src/Data/PrivFill_Enron_preprocessing.ipynb`
 </details>
 
 <details>
-<summary><h3>2. Database Creation</h3></summary>
-
-A PostgreSQL database was created to store:
-- Original texts with PII
-- Anonymized versions of the texts using different methods
-- RAG system responses for different questions
-- Evaluation metrics for responses
-
-The database schema includes:
-- Tables for storing text data with columns for different anonymization methods
-- Tables for storing responses to queries based on different anonymized versions
-- Evaluation metrics for measuring privacy and utility
-</details>
-
-<details>
-<summary><h3>3. Implementation of Anonymization Methods</h3></summary>
+<summary><h3>2. Implementation of Anonymization Methods</h3></summary>
 
 Several anonymization methods were implemented:
 
@@ -167,15 +158,42 @@ Several anonymization methods were implemented:
    - **Diffractor**: Implementation with various epsilon values (1, 2, 3)
    - **DP-Prompt**: Implementation with various epsilon values (150, 200, 250)
    - **DP-MLM**: Implementation with various epsilon values (50, 75, 100)
+
+Relevant files/folders:
+- `src/Presidio`
+- `src/Differential_privacy/Diffractor/Diffractor.py`
+- `src/Differential_privacy/DPMLM/DPMLM.py`
+- `src/Differential_privacy/PrivFill/LLMDP.py`
+- `src/Differential_privacy/DP.py`
 </details>
 
 <details>
-<summary><h3>4. RAG and Vector Database Creation</h3></summary>
+<summary><h3>3. RAG and Vector Database Creation</h3></summary>
 
 Setup of the RAG system:
 - Created vector embeddings for each text (original and anonymized versions)
 - Used Pinecone as the vector database
 - Integrated with LlamaIndex for efficient retrieval
+
+Relevant files:
+- `src/RAG/Pinecone_LlamaIndex`
+</details>
+
+<details>
+<summary><h3>4. Database Creation</h3></summary> 
+
+A PostgreSQL database was created to store:
+- Original texts with PII
+- Anonymized versions of the texts using different methods
+- RAG system responses for different questions
+- Evaluation metrics for responses
+
+The database schema includes:
+- Table for storing text data with columns for different anonymization methods (table_text)
+- Table for storing responses to queries based on different anonymized versions and the evaluation metrics for measuring privacy and utility (table_responses)
+
+Relevant files:
+- `src/Data/Database_management.py`
 </details>
 
 <details>
@@ -186,6 +204,10 @@ The data loading process:
 - Applying different anonymization methods to the texts
 - Storing both the original and anonymized versions in the database
 - Indexing all versions in the vector database for retrieval
+
+Relevant files:
+- `src/Data/CSV_loader.py`
+- `src/Data/Data_loader.py`
 </details>
 
 <details>
@@ -197,11 +219,13 @@ Response generation methodology:
   2. Privacy question: Asking for private or sensitive information in the text
 - Generated responses using both original and anonymized texts
 - Stored all responses in the database for evaluation
+
+Relevant files:
+- `src/RAG/Response_generation.py`
 </details>
 
 <details>
 <summary><h3>7. Response Evaluation</h3></summary>
-
 Evaluation metrics used:
 - **Utility Metrics**:
   - ROUGE-1 & ROUGE-L scores
@@ -213,4 +237,7 @@ Evaluation metrics used:
   - LLM-based privacy judge (GPT-4o-mini) that calculates privacy leakage scores
   - Entity-based comparison (names, contact info, dates, locations, etc.)
   - Overall privacy leakage score
+
+  Relevant files:
+- `src/RAG/Response_evaluation.py`
 </details>
