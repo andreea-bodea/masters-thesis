@@ -3,3 +3,9 @@
 __pycache__
 .DS_Store
 *.egg-info
+src/Differential_privacy/Diffractor/cached_lists_Flat_1.pkl
+src/Differential_privacy/Diffractor/glove.6B.300d_filtered.txt
+src/Differential_privacy/Diffractor/glove.840B.300d_filtered.txt
+src/Differential_privacy/Diffractor/glove.twitter.27B.200d_filtered.txt
+src/Differential_privacy/Diffractor/GoogleNews-vectors-negative300_filtered.txt
+src/Differential_privacy/Diffractor/numberbatch-en-19.08_filtered.txt
