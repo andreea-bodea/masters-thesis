@@ -5,8 +5,11 @@ This is the code repository for the paper: "A Survey of Privacy Risks and Privac
 ## Table of Contents
 - [Demo: GuardRAG](#demo-guardrag)
   - [Installation](#installation)
-  - [Running the Demo](#running-the-demo)
-  - [Demo Features](#demo-features)
+  - [Features of GuardRAG](#features-of-guardrag)
+  - [Running GuardRAG](#running-guardrag)
+- [Live Version: GuardRAG LIVE](#live-version-guardrag-live)
+  - [Features of GuardRAG LIVE](#features-of-guardrag-live)
+  - [Running GuardRAG LIVE](#running-guardrag-live)
 - [Project Structure](#project-structure)
 - [Experiment Methodology](#experiment-methodology)
   - [1. Dataset Selection and Preprocessing](#1-dataset-selection-and-preprocessing)
@@ -53,15 +56,7 @@ A Streamlit-based demo is available to visualize and compare:
    PINECONE_ENVIRONMENT=your_pinecone_environment
    ```
 
-### Running the Demo
-
-1. Run the Streamlit application:
-   ```bash
-   cd src/Demo
-   streamlit run Streamlit_Enron_BBC.py
-   ```
-
-### Demo Features
+### Features of GuardRAG
 
 The demo allows you to:
 - Select between BBC and Enron datasets
@@ -75,6 +70,14 @@ The demo allows you to:
 - Compare RAG responses generated from both original and anonymized texts
 - Evaluate the effectiveness of privacy mechanisms using various metrics
 
+### Running GuardRAG
+
+Run the Streamlit application:
+   ```bash
+   cd src/Demo
+   streamlit run Streamlit_Enron_BBC.py
+   ```
+
 ### Screenshots
 
 ![Dataset Selection](src/Demo/Demo1.png)
@@ -86,13 +89,61 @@ The demo allows you to:
 ![Response Comparison](src/Demo/Demo3.png)
 *Screenshot 3: Privacy Experiment - Prompt and RAG responses AND Evaluation*
 
+## Live Version: GuardRAG LIVE
+
+GuardRAG LIVE is an interactive, real-time version of the privacy-preserving RAG system that allows users to:
+- Upload their own documents (PDF or TXT files) or input text directly
+- Apply various privacy-preserving techniques in real-time
+- Generate RAG responses using the anonymized versions
+- Compare and evaluate the effectiveness of different privacy-preserving methods
+
+### Features of GuardRAG LIVE
+
+- **Real-time document processing:** Upload PDFs or text files, or type text directly
+- **Multi-language support:** Process documents in English and German
+- **Interactive privacy-preservation:** Apply different anonymization techniques with customizable parameters
+- **Visualized PII detection:** See highlighted PII entities in your text
+- **RAG integration:** Generate responses based on your anonymized documents
+- **Evaluation metrics:** Compare the utility and privacy of generated responses
+
+Available privacy-preserving methods:
+1. **PII-based methods:**
+   - PII Deletion
+   - PII Labeling
+   - PII Replacement with Synthetic Data
+2. **Differential Privacy methods:**
+   - Diffractor (with adjustable epsilon)
+   - DP-Prompt (with adjustable epsilon)
+   - DP-MLM (with adjustable epsilon)
+
+### Running GuardRAG LIVE
+
+1. Install the required dependencies:
+   ```bash
+   pip install -e .
+   # or alternatively:
+   pip install -r requirements.txt
+   ```
+
+2. Set up environment variables:
+   ```
+   OPENAI_API_KEY=your_openai_api_key
+   ```
+
+3. Run the GuardRAG LIVE application:
+   ```bash
+   cd src/Demo
+   streamlit run Streamlit.py
+   ```
+
 ## Project Structure
 
 ```
 guardrag/
-├── White_Literature.md                   # List with all the titles and links of the papers
-├── Grey_Literature.md                    # List with all the titles and link of the websites and videos
-├── Systematic Literature Review.pdf                   # Notes for all the papers in the SLR
+└── SLR/                                  # Sytematic Literature Review Resources
+  ├── White_Literature.md                 # List with all the titles and links of the papers
+  ├── Grey_Literature.md                  # List with all the titles and link of the websites and videos
+  └── Systematic Literature Review.pdf    # Notes for all the papers in the SLR
 ├── .env                   # Environment variables configuration
 ├── pyproject.toml         # Project dependencies and metadata
 ├── requirements.txt       # Project dependencies
