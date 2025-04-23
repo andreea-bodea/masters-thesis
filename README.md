@@ -136,6 +136,11 @@ Available privacy-preserving methods:
    streamlit run Streamlit.py
    ```
 
+### Screenshots
+
+![Dataset Selection](src/Demo/GuardRAG_live.png)
+*Screenshot 1: Dataset selection and text anonymization comparison*
+
 ## Project Structure
 
 ```
