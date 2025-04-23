@@ -1,6 +1,6 @@
-# A Survey on Privacy in RAG
+# Privacy in RAG
 
-This is the code repository for the paper: "A Survey of Privacy Risks and Privacy-preserving Mitigations in Retrieval-Augmented Generation Systems"
+This is the code repository for the master's thesis: "Privacy Issues and Privacy-preserving Mechanisms in Retrieval-Augmented Generation Systems"
 
 ## Table of Contents
 - [Demo: GuardRAG](#demo-guardrag)
