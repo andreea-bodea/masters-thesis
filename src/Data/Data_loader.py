@@ -1,82 +1,33 @@
 import json
-import os
-import dotenv
 import logging
 from Data.Database_management import insert_partial_record, add_data
-from Presidio.Presidio_helpers import analyze, anonymize, create_fake_data, analyzer_engine
-from Presidio.Presidio_OpenAI import OpenAIParams
 from RAG.Pinecone_LlamaIndex import loadDataPinecone
+from Presidio.Presidio import analyze_text_with_presidio, delete_pii, label_pii, replace_pii
 from Differential_privacy.DP import diff_privacy_dp_prompt, diff_privacy_diffractor, diff_privacy_dpmlm
 
 st_logger = logging.getLogger('Data_loader ')
 st_logger.setLevel(logging.INFO)
-dotenv.load_dotenv()
-
-def split_text_into_chunks(text, max_words):
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), max_words):
-        chunk = ' '.join(words[i:i + max_words])
-        chunks.append(chunk) 
-    return chunks
 
 def load_data_presidio(table_name, index_name, text_with_pii, file_name, file_hash, file_bytes):
-    
-    st_logger.info(f"{file_name} - Presidio text analysis started on the text: {text_with_pii}")
-    analyzer = analyzer_engine()
-    st_analyze_results = analyze(
-        text=text_with_pii,
-        language="en",
-        score_threshold=0.5,
-        allow_list=[],
-    )
-    st_logger.info(f"Presidio text analysis completed")#: " {st_analyze_results}")
+    text_pii_deleted = delete_pii(text_with_pii)
+    st_logger.info(f"{file_name} - Text with PII deleted: {text_pii_deleted}")
+    text_pii_labeled = label_pii(text_with_pii)
+    st_logger.info(f"{file_name} - Text with PII labeled: {text_pii_labeled}")
+    text_pii_synthetic = replace_pii(text_with_pii)
+    st_logger.info(f"{file_name} - Synthetic data created: {text_pii_synthetic}")
 
+    st_analyze_results = analyze_text_with_presidio(text_with_pii)
     results_as_dicts = [result.to_dict() for result in st_analyze_results]
     results_json = json.dumps(results_as_dicts, indent=2)
 
-    st_logger.info(f"Presidio text anonymization started.")
-    text_pii_deleted = anonymize(
-        text=text_with_pii,
-        operator="redact",
-        analyze_results=st_analyze_results,
+    insert_partial_record(
+        table_name, file_name, file_hash, file_bytes, text_with_pii,
+        text_pii_deleted, text_pii_labeled, text_pii_synthetic,
+        text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None,
+        text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None,
+        text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None,
+        details=results_json
     )
-    st_logger.info(f"{file_name} - Text with PII deleted: {text_pii_deleted}")
-
-    text_pii_labeled = anonymize(
-        text=text_with_pii,
-        operator="replace",
-        analyze_results=st_analyze_results,
-    )
-    st_logger.info(f"{file_name} - Text with PII labeled: {text_pii_labeled}")
-
-    open_ai_params = OpenAIParams(
-        openai_key=os.getenv("OPENAI_API_KEY"),
-        model="gpt-3.5-turbo-instruct",
-        api_base=None,
-        deployment_id="",
-        api_version=None,
-        api_type="openai",
-    )
-    text_chunks = split_text_into_chunks(text_with_pii, max_words=2500)
-    text_pii_synthetic_list = []
-    for chunk in text_chunks:
-        st_analyze_chunk_results = analyze(
-            text=chunk,
-            language="en",
-            score_threshold=0.5,
-            allow_list=[],
-        )
-        text_chunk_pii_synthetic = create_fake_data(
-            chunk,
-            st_analyze_chunk_results,
-            open_ai_params,
-        )
-        text_pii_synthetic_list.append(text_chunk_pii_synthetic)
-    text_pii_synthetic = ' '.join(text_pii_synthetic_list)
-    st_logger.info(f"{file_name} - Synthetic data created: {text_pii_synthetic}")
-
-    insert_partial_record(table_name, file_name, file_hash, file_bytes, text_with_pii, text_pii_deleted.text, text_pii_labeled.text, text_pii_synthetic, text_pii_dp_diffractor1=None, text_pii_dp_diffractor2=None, text_pii_dp_diffractor3=None, text_pii_dp_dp_prompt1=None, text_pii_dp_dp_prompt2=None, text_pii_dp_dp_prompt3=None, text_pii_dp_dpmlm1=None, text_pii_dp_dpmlm2=None, text_pii_dp_dpmlm3=None, details=results_json)
     st_logger.info(f"Presidio data inserted into the database: {file_name} {file_hash}")
 
     loadDataPinecone(

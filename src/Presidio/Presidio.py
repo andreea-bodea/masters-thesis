@@ -18,18 +18,45 @@ def split_text_into_chunks(text, max_words):
 
 def analyze_text_with_presidio(text_with_pii: str, language: str = "en"):
     st_logger.info(f"Presidio text analysis started on the text: {text_with_pii}")
-    analyzer = analyzer_engine()
-    st_analyze_results = analyze(
-        text=text_with_pii,
-        language=language,
-        score_threshold=0.5,
-        allow_list=[],
-    )
-    st_logger.info(f"Presidio text analysis completed")
-    return st_analyze_results
+    try:
+        analyzer = analyzer_engine(language=language)
+        st_analyze_results = analyze(
+            text=text_with_pii,
+            language=language,
+            score_threshold=0.5,
+            allow_list=[],
+        )
+        st_logger.info(f"Presidio text analysis completed")
+        return st_analyze_results
+    except ValueError as e:
+        if "No matching recognizers were found" in str(e) and language == "de":
+            st_logger.error(f"Error with German language model: {str(e)}")
+            # Try to fall back to English for analysis
+            st_logger.info("Falling back to English language model")
+            try:
+                st_analyze_results = analyze(
+                    text=text_with_pii,
+                    language="en",  # Fall back to English
+                    score_threshold=0.5,
+                    allow_list=[],
+                )
+                st_logger.info("Analysis completed with English model")
+                return st_analyze_results
+            except Exception as inner_e:
+                st_logger.error(f"Error with fallback analysis: {str(inner_e)}")
+                return []
+        st_logger.error(f"Error in text analysis: {str(e)}")
+        return []
+    except Exception as e:
+        st_logger.error(f"Unexpected error in text analysis: {str(e)}")
+        return []
 
 def delete_pii(text_with_pii: str, language: str = "en"):
     st_analyze_results = analyze_text_with_presidio(text_with_pii, language=language)
+    if not st_analyze_results:
+        st_logger.warning(f"No PII entities found or analyzer error. Returning original text.")
+        return text_with_pii
+        
     st_logger.info(f"Presidio text anonymization started on the text: {text_with_pii}")
     text_pii_deleted = anonymize(
         text=text_with_pii,
@@ -41,6 +68,10 @@ def delete_pii(text_with_pii: str, language: str = "en"):
 
 def label_pii(text_with_pii: str, language: str = "en"):
     st_analyze_results = analyze_text_with_presidio(text_with_pii, language=language)
+    if not st_analyze_results:
+        st_logger.warning(f"No PII entities found or analyzer error. Returning original text.")
+        return text_with_pii
+        
     st_logger.info(f"Presidio text anonymization started on the text: {text_with_pii}")
     text_pii_labeled = anonymize(
         text=text_with_pii,
@@ -64,6 +95,11 @@ def replace_pii(text_with_pii: str, language: str = "en"):
     text_pii_synthetic_list = []
     for chunk in text_chunks:
         st_analyze_chunk_results = analyze_text_with_presidio(chunk, language=language)
+        if not st_analyze_chunk_results:
+            st_logger.warning(f"No PII entities found or analyzer error for chunk. Returning original chunk.")
+            text_pii_synthetic_list.append(chunk)
+            continue
+            
         text_chunk_pii_synthetic = create_fake_data(
             chunk,
             st_analyze_chunk_results,

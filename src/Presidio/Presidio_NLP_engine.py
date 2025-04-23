@@ -229,8 +229,17 @@ def create_nlp_engine_with_spacy(lang_code: str = "en") -> Tuple[NlpEngine, Reco
     """
     if lang_code == "de":
         model_name = "de_core_news_lg"
+        # Verify that the German model is installed
+        if not spacy.util.is_package(model_name):
+            print(f"Installing German model: {model_name}")
+            spacy.cli.download(model_name)
+            print("German model installed successfully")
     else:
         model_name = "en_core_web_lg"
+        if not spacy.util.is_package(model_name):
+            print(f"Installing English model: {model_name}")
+            spacy.cli.download(model_name)
+            print("English model installed successfully")
 
     nlp_configuration = {
         "nlp_engine_name": "spacy",
@@ -252,7 +261,7 @@ def create_nlp_engine_with_spacy(lang_code: str = "en") -> Tuple[NlpEngine, Reco
 
     nlp_engine = NlpEngineProvider(nlp_configuration=nlp_configuration).create_engine()
     registry = RecognizerRegistry()
-    logger.info("Loading predefined recognizers...")
+    logger.info(f"Loading predefined recognizers for language: {lang_code}...")
     registry.load_predefined_recognizers(nlp_engine=nlp_engine)
     logger.info("Predefined recognizers loaded.")
     return nlp_engine, registry

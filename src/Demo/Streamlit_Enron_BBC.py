@@ -8,9 +8,7 @@ from natsort import natsorted
 import plotly.express as px
 from presidio_analyzer import RecognizerResult
 from annotated_text import annotated_text
-from Presidio.Presidio_helpers import (
-    annotate,
-)    
+from Presidio.Presidio_helpers import annotate 
 
 def extract_llm_score(entry):
     """

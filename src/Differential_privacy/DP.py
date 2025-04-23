@@ -3,8 +3,9 @@ from .Diffractor.Diffractor import Lists, Diffractor
 from .PrivFill.LLMDP import DPPrompt
 import nltk
 from nltk.data import find
+import os
 
-def diff_privacy_diffractor(text_with_pii, epsilon):
+def diff_privacy_diffractor(text_with_pii, epsilon, language="en"):
     try:
         find('tokenizers/punkt')
     except LookupError:
@@ -14,8 +15,12 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
     except LookupError:
         nltk.download('stopwords')
 
+    # Get the absolute path to the data directory
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Diffractor/data')
+    
     lists = Lists(
-        home="./src/Differential_privacy/Diffractor",
+#       home="./src/Differential_privacy/Diffractor/data",
+        home=data_dir,
     )
     diff = Diffractor(
         L=lists,
@@ -29,21 +34,32 @@ def diff_privacy_diffractor(text_with_pii, epsilon):
     diff.cleanup()
     return ' '.join(perturbed_text)
 
-def diff_privacy_dp_prompt(text_with_pii, epsilon):
-    sentences = nltk.sent_tokenize(text_with_pii)
-    dpprompt = DPPrompt(model_checkpoint="google/flan-t5-large")
+def diff_privacy_dp_prompt(text_with_pii, epsilon, language="en"):
+    sentences = nltk.sent_tokenize(text_with_pii, language=language)
+    # For German language, use a multilingual model
+    if language == "de":
+        model_checkpoint = "google/mt5-base"
+    else:
+        model_checkpoint = "google/flan-t5-large"
+    
+    dpprompt = DPPrompt(model_checkpoint=model_checkpoint)
     text_pii_dp_dp_prompt = dpprompt.privatize_dp(sentences, epsilon=epsilon)
     return ' '.join(text_pii_dp_dp_prompt)
 
-def diff_privacy_dpmlm(text_with_pii, epsilon):
-    sentences = nltk.sent_tokenize(text_with_pii)
-    dpmlm = DPMLM()
+def diff_privacy_dpmlm(text_with_pii, epsilon, language="en"):
+    sentences = nltk.sent_tokenize(text_with_pii, language=language)
+    # Initialize DPMLM with appropriate language model
+    if language == "de":
+        dpmlm = DPMLM(model_name="dbmdz/bert-base-german-cased")
+    else:
+        dpmlm = DPMLM()
+    
     perturbed_sentences = []
     
     for sentence in sentences:
         # If sentence is too long, break it into chunks
-        tokens = nltk.word_tokenize(sentence)
-        if len(tokens) > 75:  # Conservative estimate for RoBERTa's 512 token limit
+        tokens = nltk.word_tokenize(sentence, language=language)
+        if len(tokens) > 75:  # Conservative estimate for model's token limit
             # Process in fixed-size chunks
             chunk_size = 75
             chunks = []

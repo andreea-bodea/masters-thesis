@@ -21,6 +21,7 @@ from Presidio.Presidio_NLP_engine import (
     create_nlp_engine_with_spacy,
     create_nlp_engine_with_flair
 )
+from presidio_analyzer.nlp_engine import NlpEngineProvider
 
 logger = logging.getLogger("presidio-streamlit")
 
@@ -32,20 +33,56 @@ def nlp_engine_and_registry() -> Tuple[NlpEngine, RecognizerRegistry]:
     return create_nlp_engine_with_flair()   # "flair"
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def nlp_engine_and_registry(language: str = "en") -> Tuple[NlpEngine, RecognizerRegistry]:
     """Create the NLP Engine + registry based on language."""
+    import spacy
+    
+    # Force cache clear for different languages to ensure we get the right model
+    st.cache_resource.clear()
+    
     if language == "de":
-        # German spaCy only (or add a Flair‐German variant here)
-        return create_nlp_engine_with_spacy("de")
-    else:
-        # English: Flair + spaCy‐sm for POS/etc.
-        return create_nlp_engine_with_flair()
+        # Check if German model is installed, if not, install it
+        try:
+            model_name = "de_core_news_lg"
+            if not spacy.util.is_package(model_name):
+                print(f"Installing German model: {model_name}")
+                spacy.cli.download(model_name)
+                print("German model installed successfully")
+            
+            # Create specific German NLP configuration
+            nlp_configuration = {
+                "nlp_engine_name": "spacy",
+                "models": [{"lang_code": "de", "model_name": model_name}],
+                "ner_model_configuration": {
+                    "model_to_presidio_entity_mapping": {
+                        "PER": "PERSON",
+                        "LOC": "LOCATION",
+                        "ORG": "ORGANIZATION",
+                        "MISC": "GENERIC_PII", 
+                        "DATE": "DATE_TIME",
+                        "TIME": "DATE_TIME",
+                    }
+                }
+            }
+            
+            nlp_engine = NlpEngineProvider(nlp_configuration=nlp_configuration).create_engine()
+            registry = RecognizerRegistry()
+            registry.load_predefined_recognizers(nlp_engine=nlp_engine)
+            return nlp_engine, registry
+            
+        except Exception as e:
+            st.error(f"Error loading German model: {str(e)}. Falling back to English.")
+            print(f"Error loading German model: {str(e)}. Falling back to English.")
+            language = "en"  # Fall back to English
+    
+    # Default to English
+    return create_nlp_engine_with_flair()
 
-@st.cache_resource(show_spinner=False)
-def analyzer_engine() -> AnalyzerEngine:
-    """Create the Analyzer Engine instance."""
-    nlp_engine, registry = nlp_engine_and_registry()
+@st.cache_resource(show_spinner=False, hash_funcs={"builtins.str": lambda s: s})
+def analyzer_engine(language: str = "en") -> AnalyzerEngine:
+    """Create the Analyzer Engine instance with proper language support."""
+    nlp_engine, registry = nlp_engine_and_registry(language=language)
     analyzer = AnalyzerEngine(nlp_engine=nlp_engine, registry=registry)
     return analyzer
 
@@ -60,10 +97,10 @@ def get_supported_entities():
     return analyzer_engine().get_supported_entities() + ["GENERIC_PII"]
 
 @st.cache_data(show_spinner=False)
-def analyze(**kwargs):
+def analyze(text: str, language: str = "en", **kwargs):
     """Analyze input using Analyzer engine and input arguments (kwargs)."""
     # The analyzer will use all entities by default when none are specified
-    return analyzer_engine().analyze(**kwargs)
+    return analyzer_engine(language=language).analyze(text=text, language=language, **kwargs)
 
 def anonymize(
     text: str,
