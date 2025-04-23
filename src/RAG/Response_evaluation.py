@@ -1,6 +1,6 @@
 import logging
 from Data.Database_management import retrieve_responses_by_name_and_question, update_response_evaluation, retrieve_record_by_name
-from Response_generation import get_all_questions
+from RAG.Response_generation import get_all_questions
 from rouge_score import rouge_scorer
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from sentence_transformers import SentenceTransformer

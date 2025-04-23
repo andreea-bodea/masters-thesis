@@ -77,7 +77,7 @@ def getResponse(index_name: str, question: str, filters: list) -> str:
             ExactMatchFilter(key="text_type", value=filters[1])
         ]
     )
-    similarity_top_k = 4
+    similarity_top_k = 2
     query_engine = index.as_query_engine(llm=llm, streaming=False, similarity_top_k=similarity_top_k, filters=metadata_filters)
     response = query_engine.query(question)
 
