@@ -223,6 +223,40 @@ def create_nlp_engine_with_spacy() -> Tuple[NlpEngine, RecognizerRegistry]:
 
     return nlp_engine, registry
 
+def create_nlp_engine_with_spacy(lang_code: str = "en") -> Tuple[NlpEngine, RecognizerRegistry]:
+    """
+    Instantiate a spaCy-based NlpEngine for 'en' or 'de'.
+    """
+    if lang_code == "de":
+        model_name = "de_core_news_lg"
+    else:
+        model_name = "en_core_web_lg"
+
+    nlp_configuration = {
+        "nlp_engine_name": "spacy",
+        "models": [{"lang_code": lang_code, "model_name": model_name}],
+        "ner_model_configuration": {
+            "model_to_presidio_entity_mapping": {
+                "PER": "PERSON",
+                "LOC": "LOCATION",
+                "ORG": "ORGANIZATION",
+                # spaCy‐de uses same labels, plus MISC if you want:
+                "MISC": "GENERIC_PII",
+                "DATE": "DATE_TIME",
+                "TIME": "DATE_TIME",
+            },
+            "low_confidence_score_multiplier": 0.4,
+            "low_score_entity_names": ["ORG", "ORGANIZATION"],
+        },
+    }
+
+    nlp_engine = NlpEngineProvider(nlp_configuration=nlp_configuration).create_engine()
+    registry = RecognizerRegistry()
+    logger.info("Loading predefined recognizers...")
+    registry.load_predefined_recognizers(nlp_engine=nlp_engine)
+    logger.info("Predefined recognizers loaded.")
+    return nlp_engine, registry
+
 def create_nlp_engine_with_flair() -> Tuple[NlpEngine, RecognizerRegistry]:
     """
     Instantiate an NlpEngine with a FlairRecognizer and a small spaCy model.
@@ -231,7 +265,9 @@ def create_nlp_engine_with_flair() -> Tuple[NlpEngine, RecognizerRegistry]:
     """
 
     registry = RecognizerRegistry()
+    logger.info("Loading predefined recognizers...")
     registry.load_predefined_recognizers()
+    logger.info("Predefined recognizers loaded.")
 
     # there is no official Flair NlpEngine, hence we load it as an additional recognizer
 
@@ -244,6 +280,7 @@ def create_nlp_engine_with_flair() -> Tuple[NlpEngine, RecognizerRegistry]:
         "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
     }
     registry.add_recognizer(flair_recognizer)
+    logger.info("Flair recognizer added.")
     registry.remove_recognizer("SpacyRecognizer")
 
     nlp_engine = NlpEngineProvider(nlp_configuration=nlp_configuration).create_engine()

@@ -28,10 +28,21 @@ logger = logging.getLogger("presidio-streamlit")
 def nlp_engine_and_registry() -> Tuple[NlpEngine, RecognizerRegistry]:
     """Create the NLP Engine instance based on the requested model."""
 
-    return create_nlp_engine_with_spacy()   # "spacy"
-    # return create_nlp_engine_with_flair()   # "flair"
+    # return create_nlp_engine_with_spacy()   # "spacy"
+    return create_nlp_engine_with_flair()   # "flair"
+
 
 @st.cache_resource
+def nlp_engine_and_registry(language: str = "en") -> Tuple[NlpEngine, RecognizerRegistry]:
+    """Create the NLP Engine + registry based on language."""
+    if language == "de":
+        # German spaCy only (or add a Flair‐German variant here)
+        return create_nlp_engine_with_spacy("de")
+    else:
+        # English: Flair + spaCy‐sm for POS/etc.
+        return create_nlp_engine_with_flair()
+
+@st.cache_resource(show_spinner=False)
 def analyzer_engine() -> AnalyzerEngine:
     """Create the Analyzer Engine instance."""
     nlp_engine, registry = nlp_engine_and_registry()
@@ -48,7 +59,7 @@ def get_supported_entities():
     """Return supported entities from the Analyzer Engine."""
     return analyzer_engine().get_supported_entities() + ["GENERIC_PII"]
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def analyze(**kwargs):
     """Analyze input using Analyzer engine and input arguments (kwargs)."""
     # The analyzer will use all entities by default when none are specified
@@ -119,9 +130,21 @@ def create_fake_data(
         return "Please provide your OpenAI key"
     results = anonymize(text=text, operator="replace", analyze_results=analyze_results)
     prompt = create_prompt(results.text)
-    # print(f"Prompt: {prompt}")
     fake = call_completion_model(prompt=prompt, openai_params=openai_params)
     return fake
+
+def create_fake_data(
+    text: str,
+    analyze_results: List[RecognizerResult],
+    openai_params: OpenAIParams,
+    language: str = "en",
+) -> str:
+    """Creates a synthetic version of the text using OpenAI APIs"""
+    if not openai_params.openai_key:
+        return "Please provide your OpenAI key"
+    results = anonymize(text=text, operator="replace", analyze_results=analyze_results)
+    prompt = create_prompt(results.text, language=language)
+    return call_completion_model(prompt=prompt, openai_params=openai_params)
 
 @st.cache_data
 def call_openai_api(

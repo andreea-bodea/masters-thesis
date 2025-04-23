@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Optional
+from typing import Optional, List
 
 import openai
 from openai import OpenAI, AzureOpenAI
@@ -34,7 +34,6 @@ def call_completion_model(
 
     return response.choices[0].text.strip()
 
-
 def create_prompt(anonymized_text: str) -> str:
     """
     Create the prompt with instructions to GPT-3.
@@ -61,4 +60,21 @@ def create_prompt(anonymized_text: str) -> str:
     
     input: [[TEXT STARTS]]{anonymized_text}[[TEXT ENDS]]
     output:"""
+    return prompt
+
+def create_prompt(anonymized_text: str, language: str = "en") -> str:
+    """
+    Create the prompt for synthetic PII replacement in the desired language.
+    """
+    if language == "de":
+        lang_instr = "Ersetze die Platzhalter durch realistische deutsche Werte."
+    else:
+        lang_instr = "Replace the placeholders with realistic values."
+
+    prompt = f"""
+{lang_instr}
+
+Your role is to create synthetic text based on de-identified text.
+input: [[TEXT STARTS]]{anonymized_text}[[TEXT ENDS]]
+output:"""
     return prompt
