@@ -177,233 +177,139 @@ uploaded_file = col1.file_uploader("Upload a file:", type=["pdf", "txt"])
 # Add example text options to column 1
 with col1.expander("📋 Load example text"):
     example_texts = {
-        "English - Ministry Document": """MINISTRY OF ECONOMIC AFFAIRS
-INTERNAL MEMORANDUM
-CONFIDENTIAL
+        "English - Personal Email": """From: john.smith@example.com
+To: sarah.johnson@company.co.uk
+Date: May 15, 2023
+Subject: Meeting next week
 
-Date: November 14, 2023
-Ref: ECO/2023/11/452
+Hi Sarah,
 
-To: Department Heads
-From: Minister James Wilson
-Subject: Q4 Budget Allocation and Upcoming Reforms
+I hope this email finds you well. I wanted to confirm our meeting next Thursday, May 25, at 2:00 PM at our office (123 Main Street, London).
 
-Following our meeting on November 10, 2023 at 10:00 AM at the Wellington Conference Room, I am pleased to announce the allocation of £25 million additional funding for the Regional Development Initiative. Director Elizabeth Parker (elizabeth.parker@gov.uk, 020 7946 8321) will oversee distribution to the prioritized regions, particularly focusing on the Manchester and Birmingham economic zones.
+Please bring your ID and the contract documents we discussed. If you need to reschedule, please call me at +44 7700 123456.
 
-Deputy Minister Robert Thompson has scheduled individual consultations with stakeholders from December 5-15 at our London headquarters (125 Victoria Street, London SW1E 6DE). Department heads should contact my executive assistant, Jane Cooper (jane.cooper@gov.uk), to confirm attendance.
+My assistant, Tom Wilson, will be joining us. He can be reached at tom.wilson@example.com if you need anything beforehand.
 
-The proposed Manufacturing Sector Support Act will be presented to Parliament on January 12, 2024. Our legal team, led by Christopher Davis, Esq., has prepared the necessary documentation. The confidential draft can be accessed via the secure server using your government ID credentials.
+Bank details for expense reimbursement:
+Account Name: John Smith
+Account Number: 12345678
+Sort Code: 10-20-30
 
-Please note: The upcoming strategy meeting with Prime Minister Johnson has been rescheduled to December 3, 2023 at 9:30 AM.
+Best regards,
+John Smith
+Marketing Director
+ID: GB9834567""",
 
-Bank Details for Project Funding:
-Account Name: UK Treasury Economic Development
-Account Number: 73924685
-Sort Code: 20-41-57
-IBAN: GB29 BARC 2041 5773 9246 85
+        "German - Personal Email": """Von: martin.mueller@beispiel.de
+An: julia.schmidt@firma.de
+Datum: 15. Mai 2023
+Betreff: Besprechung nächste Woche
 
-Regards,
-James Wilson
-Minister of Economic Affairs
-Direct line: 020 7946 8300
-Mobile: +44 7700 900123
-Email: james.wilson@cabinet-office.gov.uk
-Passport Number: 548973215
-National Insurance Number: AB123456C""",
-        "German - Ministry Document": """BUNDESMINISTERIUM FÜR WIRTSCHAFT UND ENERGIE
-INTERNE MITTEILUNG
-VERTRAULICH
+Hallo Julia,
 
-Datum: 14. November 2023
-Aktenzeichen: BMWI/2023/11/452
+Ich hoffe, es geht dir gut. Ich wollte unser Treffen am nächsten Donnerstag, den 25. Mai, um 14:00 Uhr in unserem Büro (Hauptstraße 123, Berlin) bestätigen.
 
-An: Abteilungsleiter
-Von: Minister Dr. Thomas Schmidt
-Betreff: Haushaltsplanung für Q4 und anstehende Reformen
+Bitte bring deinen Ausweis und die besprochenen Vertragsunterlagen mit. Falls du einen anderen Termin benötigst, ruf mich bitte unter +49 170 1234567 an.
 
-Nach unserer Sitzung am 10. November 2023 um 10:00 Uhr im Konferenzraum Adenauer, freue ich mich, die Bereitstellung von zusätzlichen 22 Millionen Euro für die Regionale Entwicklungsinitiative bekanntzugeben. Direktorin Dr. Sabine Müller (sabine.mueller@bmwi.bund.de, 030 18615 7423) wird die Verteilung an die priorisierten Regionen überwachen, mit besonderem Fokus auf die Wirtschaftszonen in München und Hamburg.
+Mein Assistent, Thomas Weber, wird auch dabei sein. Er ist unter thomas.weber@beispiel.de erreichbar, falls du vorab Fragen hast.
 
-Staatssekretär Dr. Michael Weber hat vom 5. bis 15. Dezember Einzelkonsultationen mit Interessenvertretern in unserem Berliner Hauptsitz (Scharnhorststraße 34-37, 10115 Berlin) angesetzt. Abteilungsleiter sollten sich mit meiner persönlichen Referentin, Frau Julia Fischer (julia.fischer@bmwi.bund.de), in Verbindung setzen, um ihre Teilnahme zu bestätigen.
-
-Der Entwurf des Industrieförderungsgesetzes wird am 12. Januar 2024 dem Bundestag vorgelegt. Unser Rechtsteam unter der Leitung von Rechtsanwalt Dr. Andreas Becker hat die erforderlichen Unterlagen vorbereitet. Auf den vertraulichen Entwurf kann über den sicheren Server mit Ihren Regierungsausweisdaten zugegriffen werden.
-
-Bitte beachten Sie: Das anstehende Strategietreffen mit Bundeskanzler Scholz wurde auf den 3. Dezember 2023 um 9:30 Uhr verschoben.
-
-Bankverbindung für Projektfinanzierung:
-Kontoinhaber: Bundeshaushalt Wirtschaftsförderung
-Kontonummer: 7392468500
-BLZ: 10000000
-IBAN: DE89 3704 0044 0532 0130 00
-BIC: COBADEFFXXX
+Bankverbindung für die Kostenerstattung:
+Kontoinhaber: Martin Müller
+Kontonummer: 12345678
+BLZ: 10020030
+IBAN: DE89 1002 0030 0123 4567 89
 
 Mit freundlichen Grüßen,
-Dr. Thomas Schmidt
-Bundesminister für Wirtschaft und Energie
-Direktwahl: 030 18615 7400
-Mobiltelefon: +49 170 1234567
-E-Mail: thomas.schmidt@bmwi.bund.de
-Personalausweisnummer: L01X34R82
-Steuer-ID: 47 123 456 789""",
-        "English - Contract": """SERVICES AGREEMENT
+Martin Müller
+Marketingdirektor
+Personalausweis: L22AB456C""",
 
-CONTRACT No.: SA-2023-4572
-Date: February 15, 2023
+        "English - Simple Contract": """RENTAL AGREEMENT
+
+Date: June 1, 2023
 
 BETWEEN:
-
-NORTHBRIDGE CONSULTING LTD. (hereinafter referred to as the "Company")
-Company Registration No.: 08745621
-Registered Office: 45 Blackfriars Road, London, SE1 8NZ, United Kingdom
-Represented by: Richard Thompson, Chief Executive Officer
-Email: r.thompson@northbridge-consulting.co.uk
-Phone: +44 20 7123 4567
+Jane Doe (Landlord)
+Address: 45 Park Avenue, New York, NY 10022
+Phone: 212-555-1234
+Email: jane.doe@email.com
 
 AND:
+Robert Johnson (Tenant)
+Phone: 917-555-6789
+Email: robert.johnson@email.com
+Driver's License: NY12345678
 
-EASTWOOD TECHNOLOGIES INC. (hereinafter referred to as the "Contractor")
-Company Registration No.: US-543219876
-Registered Office: 789 Tech Parkway, Suite 300, Boston, MA 02110, United States
-Represented by: Jennifer Wilson, Director of Operations
-Email: jennifer.wilson@eastwood-tech.com
-Phone: +1 617 555 8901
-Tax ID: 82-4731509
+PROPERTY:
+123 Maple Street, Apt 4B
+New York, NY 10001
 
-TERMS AND CONDITIONS:
+TERMS:
+1. Rental period: June 15, 2023 to June 14, 2024
+2. Monthly rent: $2,500 due on the 1st of each month
+3. Security deposit: $3,000
 
-1. SERVICES
-The Contractor shall provide software development services as specified in Annex A for the Company's Project Falcon (Project ID: PRJ-2023-0472).
+Payment details:
+Bank: First National Bank
+Account: Jane Doe
+Account Number: 987654321
+Routing: 021000021""",
 
-2. TERM
-This Agreement shall commence on March 1, 2023 and shall continue until February 28, 2024, unless terminated earlier.
+        "German - Simple Contract": """MIETVERTRAG
 
-3. PAYMENT
-3.1 The Company shall pay the Contractor a fixed fee of £75,000 (seventy-five thousand pounds sterling) for the Services.
-3.2 Payment schedule:
-    - 30% upon signing this Agreement
-    - 40% upon delivery of Phase 1 (due June 30, 2023)
-    - 30% upon final delivery (due December 15, 2023)
-3.3 Payment details:
-    Bank: First National Bank
-    Account Name: Eastwood Technologies Inc.
-    Account Number: 456789123
-    Sort Code: 11-22-33
-    SWIFT/BIC: FNBAUS33
-    IBAN: US45 FNBA 1234 5678 9012 34
-
-4. CONFIDENTIALITY
-All information exchanged between the parties shall be considered confidential and shall not be disclosed to third parties.
-
-5. INTELLECTUAL PROPERTY
-All intellectual property created under this Agreement shall be the exclusive property of the Company.
-
-IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
-
-For and on behalf of NORTHBRIDGE CONSULTING LTD.:
-Signature: _______________________________
-Name: Richard Thompson
-Position: Chief Executive Officer
-Date: February 15, 2023
-Passport Number: GBR957284613
-
-For and on behalf of EASTWOOD TECHNOLOGIES INC.:
-Signature: _______________________________
-Name: Jennifer Wilson
-Position: Director of Operations
-Date: February 15, 2023
-Driver's License: MA982745619""",
-        "German - Contract": """DIENSTLEISTUNGSVERTRAG
-
-VERTRAG Nr.: DL-2023-8754
-Datum: 15. Februar 2023
+Datum: 1. Juni 2023
 
 ZWISCHEN:
-
-MÜLLER & SCHMIDT GMBH (nachfolgend "Auftraggeber" genannt)
-Handelsregisternummer: HRB 98765 (Amtsgericht München)
-Geschäftssitz: Rosenheimer Straße 143, 81671 München, Deutschland
-Vertreten durch: Dr. Klaus Müller, Geschäftsführer
-E-Mail: k.mueller@mueller-schmidt.de
-Telefon: +49 89 12345678
-USt-IdNr.: DE987654321
+Anna Schmidt (Vermieterin)
+Adresse: Parkstraße 45, 10115 Berlin
+Telefon: 030-12345678
+E-Mail: anna.schmidt@email.de
 
 UND:
+Thomas Müller (Mieter)
+Telefon: 0170-87654321
+E-Mail: thomas.mueller@email.de
+Personalausweis: L01D34567
 
-WEBER TECHNOLOGIE AG (nachfolgend "Auftragnehmer" genannt)
-Handelsregisternummer: CHE-123.456.789 (Handelsregister Zürich)
-Geschäftssitz: Bahnhofstrasse 42, 8001 Zürich, Schweiz
-Vertreten durch: Sabine Weber, Vorstandsvorsitzende
-E-Mail: s.weber@weber-technologie.ch
-Telefon: +41 44 987 6543
-USt-IdNr.: CHE-123.456.789 MWST
+IMMOBILIE:
+Ahornstraße 123, Wohnung 4B
+10115 Berlin
 
-VERTRAGSBEDINGUNGEN:
+BEDINGUNGEN:
+1. Mietdauer: 15. Juni 2023 bis 14. Juni 2024
+2. Monatliche Miete: 950€ fällig am 1. jedes Monats
+3. Kaution: 1.900€
 
-1. LEISTUNGEN
-Der Auftragnehmer erbringt IT-Beratungsleistungen gemäß Anhang A für das Projekt "Digitale Transformation" (Projekt-ID: PRJ-2023-0891) des Auftraggebers.
-
-2. VERTRAGSLAUFZEIT
-Dieser Vertrag beginnt am 1. März 2023 und endet am 28. Februar 2024, sofern er nicht vorzeitig gekündigt wird.
-
-3. VERGÜTUNG
-3.1 Der Auftraggeber zahlt dem Auftragnehmer ein festes Honorar von 85.000 € (fünfundachtzigtausend Euro) für die Leistungen.
-3.2 Zahlungsplan:
-    - 30% bei Vertragsunterzeichnung
-    - 40% bei Ablieferung der Phase 1 (fällig am 30. Juni 2023)
-    - 30% bei endgültiger Abnahme (fällig am 15. Dezember 2023)
-3.3 Zahlungsdetails:
-    Bank: Deutsche Bank
-    Kontoinhaber: Weber Technologie AG
-    Kontonummer: 123456789
-    BLZ: 70070010
-    SWIFT/BIC: DEUTDEMMXXX
-    IBAN: DE89 7007 0010 0123 4567 89
-
-4. VERTRAULICHKEIT
-Alle zwischen den Parteien ausgetauschten Informationen gelten als vertraulich und dürfen nicht an Dritte weitergegeben werden.
-
-5. GEISTIGES EIGENTUM
-Alle im Rahmen dieses Vertrags geschaffenen geistigen Eigentumsrechte sind ausschließliches Eigentum des Auftraggebers.
-
-ZU URKUND DESSEN haben die Parteien diesen Vertrag zum eingangs genannten Datum unterzeichnet.
-
-Für und im Namen der MÜLLER & SCHMIDT GMBH:
-Unterschrift: _______________________________
-Name: Dr. Klaus Müller
-Position: Geschäftsführer
-Datum: 15. Februar 2023
-Personalausweisnummer: L22CK47D9
-
-Für und im Namen der WEBER TECHNOLOGIE AG:
-Unterschrift: _______________________________
-Name: Sabine Weber
-Position: Vorstandsvorsitzende
-Datum: 15. Februar 2023
-Passnummer: C5472D88L"""
+Zahlungsdetails:
+Bank: Deutsche Bank
+Kontoinhaber: Anna Schmidt
+Kontonummer: 987654321
+IBAN: DE89 1002 0030 0987 6543 21"""
     }
     
     ex_col1, ex_col2 = st.columns(2)
     
     with ex_col1:
-        if st.button("Load English Ministry Example"):
-            st.session_state['example_text'] = example_texts["English - Ministry Document"]
+        if st.button("Load English Email Example"):
+            st.session_state['example_text'] = example_texts["English - Personal Email"]
             # Also update the language selection
             st.session_state['selected_language'] = "English"
             st.rerun()
             
         if st.button("Load English Contract Example"):
-            st.session_state['example_text'] = example_texts["English - Contract"]
+            st.session_state['example_text'] = example_texts["English - Simple Contract"]
             st.session_state['selected_language'] = "English"
             st.rerun()
             
     with ex_col2:
-        if st.button("Load German Ministry Example"):
-            st.session_state['example_text'] = example_texts["German - Ministry Document"]
+        if st.button("Load German Email Example"):
+            st.session_state['example_text'] = example_texts["German - Personal Email"]
             # Also update the language selection
             st.session_state['selected_language'] = "German"
             st.rerun()
             
         if st.button("Load German Contract Example"):
-            st.session_state['example_text'] = example_texts["German - Contract"]
+            st.session_state['example_text'] = example_texts["German - Simple Contract"]
             st.session_state['selected_language'] = "German"
             st.rerun()
 
