@@ -177,7 +177,7 @@ uploaded_file = col1.file_uploader("Upload a file:", type=["pdf", "txt"])
 # Add example text options to column 1
 with col1.expander("📋 Load example text"):
     example_texts = {
-        "English - Personal Email": """From: john.smith@example.com
+        "English - Personal Email": """From: john.smith@gmail.com
 To: sarah.johnson@company.co.uk
 Date: May 15, 2023
 Subject: Meeting next week
@@ -200,8 +200,8 @@ John Smith
 Marketing Director
 ID: GB9834567""",
 
-        "German - Personal Email": """Von: martin.mueller@beispiel.de
-An: julia.schmidt@firma.de
+        "German - Personal Email": """Von: martin.mueller@gmail.com
+An: julia.schmidt@yahoo.com
 Datum: 15. Mai 2023
 Betreff: Besprechung nächste Woche
 
@@ -211,12 +211,11 @@ Ich hoffe, es geht dir gut. Ich wollte unser Treffen am nächsten Donnerstag, de
 
 Bitte bring deinen Ausweis und die besprochenen Vertragsunterlagen mit. Falls du einen anderen Termin benötigst, ruf mich bitte unter +49 170 1234567 an.
 
-Mein Assistent, Thomas Weber, wird auch dabei sein. Er ist unter thomas.weber@beispiel.de erreichbar, falls du vorab Fragen hast.
+Mein Assistent, Thomas Weber, wird auch dabei sein. Er ist unter thomas.weber@gmx.com erreichbar, falls du vorab Fragen hast.
 
 Bankverbindung für die Kostenerstattung:
 Kontoinhaber: Martin Müller
 Kontonummer: 12345678
-BLZ: 10020030
 IBAN: DE89 1002 0030 0123 4567 89
 
 Mit freundlichen Grüßen,
