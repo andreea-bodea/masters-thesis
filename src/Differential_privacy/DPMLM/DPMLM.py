@@ -19,7 +19,9 @@ from nltk.stem.wordnet import WordNetLemmatizer
 from transformers import AutoModel, AutoTokenizer, AutoModelForMaskedLM, logging
 import importlib_resources as impresources
 
-en = wn.Wordnet('oewn:2022') 
+if "oewn:2022" not in wn.lexicons():
+    wn.download('oewn:2022')
+en = wn.Wordnet(lexicon='oewn:2022')
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 logging.set_verbosity_warning()

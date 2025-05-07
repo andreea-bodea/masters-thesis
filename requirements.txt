@@ -30,3 +30,8 @@ langchain-anthropic>=0.3.0
 langchain-openai>=0.2.9
 streamlit-tags>=1.0.0
 chroma>=0.2.0
+wn
+importlib-resources
+faiss-cpu
+gensim
+diffprivlib

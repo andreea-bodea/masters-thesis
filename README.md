@@ -3,22 +3,19 @@
 This is the code repository for the master's thesis: "Privacy Issues and Privacy-preserving Mechanisms in Retrieval-Augmented Generation Systems"
 
 ## Table of Contents
+- [Table of Contents](#table-of-contents)
 - [Demo: GuardRAG](#demo-guardrag)
   - [Installation](#installation)
+  - [Installation with Docker](#installation-with-docker)
   - [Features of GuardRAG](#features-of-guardrag)
   - [Running GuardRAG](#running-guardrag)
+  - [Screenshots](#screenshots)
 - [Live Version: GuardRAG LIVE](#live-version-guardrag-live)
   - [Features of GuardRAG LIVE](#features-of-guardrag-live)
   - [Running GuardRAG LIVE](#running-guardrag-live)
+  - [Screenshots](#screenshots-1)
 - [Project Structure](#project-structure)
 - [Experiment Methodology](#experiment-methodology)
-  - [1. Dataset Selection and Preprocessing](#1-dataset-selection-and-preprocessing)
-  - [2. Database Creation](#2-database-creation)
-  - [3. Implementation of Anonymization Methods](#3-implementation-of-anonymization-methods)
-  - [4. RAG and Vector Database Creation](#4-rag-and-vector-database-creation)
-  - [5. Data Loading](#5-data-loading)
-  - [6. Response Generation](#6-response-generation)
-  - [7. Response Evaluation](#7-response-evaluation)
 
 ## Demo: GuardRAG
 
@@ -34,10 +31,10 @@ A Streamlit-based demo is available to visualize and compare:
    cd guardrag
    ```
 
-2. Install the required dependencies:
+2. Install the required dependencies, using Python 3.10 or newer:
    - For demo only (minimal installation):
      ```bash
-     pip install streamlit pandas plotly annotated-text natsort
+     pip install streamlit pandas plotly st-annotated-text natsort presidio-analyzer
      ```
    - For full experiments (including all anonymization methods and evaluations):
      ```bash
@@ -54,6 +51,18 @@ A Streamlit-based demo is available to visualize and compare:
    OPENAI_API_KEY=your_openai_api_key
    PINECONE_API_KEY=your_pinecone_api_key
    PINECONE_ENVIRONMENT=your_pinecone_environment
+   ```
+
+### Installation with Docker
+
+1. Build the Docker image:
+   ```bash
+   docker build -t guardrag .
+   ```
+
+2. Run the Docker container:
+   ```bash
+   docker run -p 8501:8501 -e OPENAI_API_KEY=your_openai_api_key guardrag
    ```
 
 ### Features of GuardRAG
