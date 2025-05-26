@@ -183,7 +183,7 @@ response_row_privacy = df_responses[(df_responses['file_name'] == selected_file)
 response_utility = response_row_utility[response_type_map[selected_anonymization]]
 response_privacy = response_row_privacy[response_type_map[selected_anonymization]]
 
-col1.subheader(f"📄 Response based on the original text")
+col1.subheader(f"🔐 Response for utility experiment")
 col1.text_area(
     label="Response on the original text", 
     value=response_utility, 
@@ -192,7 +192,7 @@ col1.text_area(
     label_visibility="hidden" # visible, hidden, collapsed
 )
 
-col2.subheader(f"🔐 Response based on the text after {selected_anonymization}")
+col2.subheader(f"🔐 Response for privacy experiment")
 col2.text_area(
     label="Response on the anonymized text", 
     value=response_privacy, 
