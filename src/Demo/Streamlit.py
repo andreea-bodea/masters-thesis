@@ -205,22 +205,21 @@ An: julia.schmidt@yahoo.com
 Datum: 15. Mai 2023
 Betreff: Besprechung nächste Woche
 
-Hallo Julia,
+Hallo Andrew,
 
-Ich hoffe, es geht dir gut. Ich wollte unser Treffen am nächsten Donnerstag, den 25. Mai, um 14:00 Uhr in unserem Büro (Hauptstraße 123, Berlin) bestätigen.
+Ich wollte unser Treffen nach Ostern, am nächsten Donnerstag, den 25. Mai, um 14:00 Uhr in unserem Büro (Hauptstraße 123, Berlin) bestätigen.
 
 Bitte bring deinen Ausweis und die besprochenen Vertragsunterlagen mit. Falls du einen anderen Termin benötigst, ruf mich bitte unter +49 170 1234567 an.
 
-Mein Assistent, Thomas Weber, wird auch dabei sein. Er ist unter thomas.weber@gmx.com erreichbar, falls du vorab Fragen hast.
+Mein Assistent, Thomas Weber, wird auch dabei sein. Er ist unter thomas.weber@gmail.com erreichbar, falls du vorab Fragen hast.
 
 Bankverbindung für die Kostenerstattung:
 Kontoinhaber: Martin Müller
 Kontonummer: 12345678
-IBAN: DE89 1002 0030 0123 4567 89
 
 Mit freundlichen Grüßen,
 Martin Müller
-Marketingdirektor
+Marketingdirektor Deutsche Bank
 Personalausweis: L22AB456C""",
 
         "English - Simple Contract": """RENTAL AGREEMENT
@@ -237,7 +236,6 @@ AND:
 Robert Johnson (Tenant)
 Phone: 917-555-6789
 Email: robert.johnson@email.com
-Driver's License: NY12345678
 
 PROPERTY:
 123 Maple Street, Apt 4B
@@ -252,7 +250,7 @@ Payment details:
 Bank: First National Bank
 Account: Jane Doe
 Account Number: 987654321
-Routing: 021000021""",
+""",
 
         "German - Simple Contract": """MIETVERTRAG
 
@@ -262,12 +260,12 @@ ZWISCHEN:
 Anna Schmidt (Vermieterin)
 Adresse: Parkstraße 45, 10115 Berlin
 Telefon: 030-12345678
-E-Mail: anna.schmidt@email.de
+E-Mail: anna.schmidt@gmail.de
 
 UND:
 Thomas Müller (Mieter)
 Telefon: 0170-87654321
-E-Mail: thomas.mueller@email.de
+E-Mail: thomas.mueller@yahoo.com
 Personalausweis: L01D34567
 
 IMMOBILIE:
